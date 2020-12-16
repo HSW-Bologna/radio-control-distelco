@@ -1,0 +1,21 @@
+#ifndef HARDWAREPROFILE_H_INCLUDED
+#define HARDWAREPROFILE_H_INCLUDED
+
+#define LED_RUN GPIO_NUM_32
+
+#define TOUCH_CS      GPIO_NUM_17
+#define TOUCH_PEN_IRQ GPIO_NUM_35
+
+#define DIP_1 GPIO_NUM_39
+#define DIP_2 GPIO_NUM_36
+
+#define LCD_RETRO        GPIO_NUM_4
+#define LCD_RESET        GPIO_NUM_15
+#define LCD_DATA_COMMAND GPIO_NUM_13
+#define LCD_CS           GPIO_NUM_16
+
+#define SPI_DOUT GPIO_NUM_33
+#define SPI_DIN  GPIO_NUM_34
+#define SPI_CLK  GPIO_NUM_14
+
+#endif
