@@ -16,8 +16,8 @@ static void task_heartbeat() {
     TickType_t last;
     last = xTaskGetTickCount();
     while (1) {
-        // ESP_LOGI("IDLE CHECK", "xPortGetFreeHeapSize: %d \t tasknum: %d", xPortGetFreeHeapSize(),
-        // uxTaskGetNumberOfTasks());
+        ESP_LOGI("IDLE CHECK", "xPortGetFreeHeapSize: %d \t tasknum: %d", xPortGetFreeHeapSize(),
+                 uxTaskGetNumberOfTasks());
 
         gpio_set_level(LED_RUN, 0);
         vTaskDelayUntil(&last, 1000 / portTICK_PERIOD_MS);

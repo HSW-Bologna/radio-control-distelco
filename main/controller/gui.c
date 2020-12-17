@@ -4,14 +4,14 @@
 #include "peripherals/display/SSD2119.h"
 #include "peripherals/display/tsc2046.h"
 #include "utils/utils.h"
+#include "view/view.h"
 
 
-void controller_gui_init(void) {
+void controller_gui_init(model_t *model) {
     display_init();
     ssd2119_init();
     tsc2046_init();
     lv_init();
-    unsigned long x = get_millis();
 
     static lv_color_t    buf[DISP_COLOR_BUF_SIZE];
     static lv_disp_buf_t disp_buf;
@@ -30,4 +30,19 @@ void controller_gui_init(void) {
     indev_drv.read_cb = tsc2046_touch_read;
     indev_drv.type    = LV_INDEV_TYPE_POINTER;
     lv_indev_drv_register(&indev_drv);
+
+    view_init(model);
+}
+
+
+void controller_manage_gui(model_t *model) {
+    view_message_t umsg;
+    view_event_t   event;
+
+    lv_task_handler();
+
+    while (view_get_next_msg(model, &umsg, &event)) {
+        // controller_process_msg(umsg.cmsg, model, get_millis());
+        view_process_msg(umsg.vmsg, model);
+    }
 }
