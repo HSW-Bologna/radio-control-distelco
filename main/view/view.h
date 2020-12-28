@@ -1,6 +1,8 @@
 #ifndef VIEW_H_INCLUDED
 #define VIEW_H_INCLUDED
 
+#include "lvgl.h"
+
 #include "view_types.h"
 #include "gel/pagemanager/page_manager.h"
 
