@@ -19,15 +19,20 @@ static page_manager_t pman;
 void view_init(model_t *model) {
     pman_init(&pman);
     event_queue_init(&q);
-    view_change_page(model, &page_splash);
+    view_change_page(model, &page_main);
+}
+
+
+void view_change_page_extra(model_t *model, const pman_page_t *page, void *extra) {
+    assert(page != NULL);
+    pman_change_page_extra(&pman, model, *page, extra);
+    event_queue_init(&q);     // Butta tutti gli eventi precedenti quando cambi la pagina
+    view_event((view_event_t){.code = VIEW_EVENT_CODE_OPEN});
 }
 
 
 void view_change_page(model_t *model, const pman_page_t *page) {
-    assert(page != NULL);
-    pman_change_page(&pman, model, *page);
-    event_queue_init(&q);     // Butta tutti gli eventi precedenti quando cambi la pagina
-    view_event((view_event_t){.code = VIEW_EVENT_CODE_OPEN});
+    view_change_page_extra(model, page, NULL);
 }
 
 
@@ -53,6 +58,8 @@ int view_get_next_msg(model_t *model, view_message_t *msg, view_event_t *eventco
 void view_process_msg(view_page_command_t vmsg, model_t *model) {
     if (vmsg.code == VIEW_PAGE_COMMAND_CODE_CHANGE_PAGE) {
         view_change_page(model, vmsg.page);
+    } else if (vmsg.code == VIEW_PAGE_COMMAND_CODE_CHANGE_PAGE_EXTRA) {
+        view_change_page_extra(model, vmsg.page, vmsg.extra);
     } else if (vmsg.code == VIEW_PAGE_COMMAND_CODE_BACK) {
         pman_back(&pman, model);
         event_queue_init(&q);
@@ -96,7 +103,7 @@ static void page_event_cb(lv_obj_t *obj, lv_event_t event) {
 void view_register_default_callback(lv_obj_t *obj, int id) {
     view_obj_data_t *data = malloc(sizeof(view_obj_data_t));
     data->id              = id;
-    lv_obj_set_user_data(obj, data);
+    lv_obj_set_user_data(obj, (void *)data);
     lv_obj_set_event_cb(obj, page_event_cb);
 }
 

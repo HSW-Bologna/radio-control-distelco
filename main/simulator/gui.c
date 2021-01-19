@@ -8,10 +8,13 @@
 #include "indev/mouse.h"
 #include "indev/mousewheel.h"
 #include "lvgl.h"
+#include "lv_themes/lv_theme_material.h"
 
 #include "view/view.h"
+#include "view/theme/style.h"
+#include "view/theme/theme.h"
 #include "model/model.h"
-#include "controller.h"
+#include "simulator_controller.h"
 
 #define DISP_BUF_SIZE (40 * LV_HOR_RES_MAX)
 
@@ -19,6 +22,12 @@ static lv_color_t buf[DISP_BUF_SIZE];
 
 lv_indev_t *gui_init(void) {
     lv_init();
+
+    style_init();
+    lv_theme_set_act(theme_init(LV_THEME_DEFAULT_COLOR_PRIMARY, LV_THEME_DEFAULT_COLOR_SECONDARY,
+                                LV_THEME_MATERIAL_FLAG_DARK | LV_THEME_MATERIAL_FLAG_NO_FOCUS,
+                                LV_THEME_DEFAULT_FONT_SMALL, LV_THEME_DEFAULT_FONT_NORMAL,
+                                LV_THEME_DEFAULT_FONT_SUBTITLE, LV_THEME_DEFAULT_FONT_TITLE));
 
     /* Add a display
      * Use the 'monitor' driver which creates window on PC's monitor to simulate a display*/

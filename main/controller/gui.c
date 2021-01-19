@@ -3,15 +3,24 @@
 #include "peripherals/display/display.h"
 #include "peripherals/display/SSD2119.h"
 #include "peripherals/display/tsc2046.h"
+#include "controller.h"
 #include "utils/utils.h"
 #include "view/view.h"
+#include "view/theme/theme.h"
+#include "view/theme/style.h"
 
 
 void controller_gui_init(model_t *model) {
     display_init();
     ssd2119_init();
     tsc2046_init();
+
     lv_init();
+    lv_theme_set_act(theme_init(LV_THEME_DEFAULT_COLOR_PRIMARY, LV_THEME_DEFAULT_COLOR_SECONDARY,
+                                LV_THEME_MATERIAL_FLAG_DARK | LV_THEME_MATERIAL_FLAG_NO_FOCUS,
+                                LV_THEME_DEFAULT_FONT_SMALL, LV_THEME_DEFAULT_FONT_NORMAL,
+                                LV_THEME_DEFAULT_FONT_SUBTITLE, LV_THEME_DEFAULT_FONT_TITLE));
+    style_init();
 
     static lv_color_t    buf[DISP_COLOR_BUF_SIZE];
     static lv_disp_buf_t disp_buf;
@@ -42,7 +51,7 @@ void controller_manage_gui(model_t *model) {
     lv_task_handler();
 
     while (view_get_next_msg(model, &umsg, &event)) {
-        // controller_process_msg(umsg.cmsg, model, get_millis());
+        controller_process_msg(umsg.cmsg, model);
         view_process_msg(umsg.vmsg, model);
     }
 }

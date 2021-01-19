@@ -4,3 +4,6 @@
 [submodule "components/generic_embedded_libs"]
 	path = components/generic_embedded_libs
 	url = https://github.com/Maldus512/generic_embedded_libs.git
+[submodule "main/simulator/FreeRTOS"]
+	path = main/simulator/FreeRTOS
+	url = https://github.com/FreeRTOS/FreeRTOS.git

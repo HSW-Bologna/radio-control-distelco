@@ -60,7 +60,8 @@ void ssd2119_init(void) {
     ssd2119_data(0x0001);        // Page 36 of SSD2119 datasheet
 
     ssd2119_command(0x0001);     // Driver Output Control
-    ssd2119_data(0x72EF);        // Page 36-39 of SSD2119 datasheet
+    ssd2119_data(0x30EF);        // Page 36-39 of SSD2119 datasheet
+    // Era 72EF
 
     ssd2119_command(0x0002);     // LCD Driving Waveform Control
     ssd2119_data(0x0600);        // Page 40-42 of SSD2119 datasheet

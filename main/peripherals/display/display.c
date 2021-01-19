@@ -36,7 +36,7 @@ static void display_backlight_init() {
                                           .timer_sel  = LEDC_TIMER_2};
     ledc_channel_config(&ledc_channel);
     ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 0);
-    display_set_backlight(100);
+    display_set_backlight(50);
 }
 
 
@@ -65,6 +65,7 @@ void display_init(void) {
     display_backlight_init();
 }
 
+
 void display_send_data(uint8_t *data, unsigned int length) {
     esp_err_t ret;
     if (length == 0)
@@ -77,6 +78,7 @@ void display_send_data(uint8_t *data, unsigned int length) {
     ret = spi_device_polling_transmit(display_spi, &t);     // Transmit!
     ESP_ERROR_CHECK(ret);
 }
+
 
 void display_set_backlight(int percentage) {
     int duty = (percentage * 0xFF) / 100;

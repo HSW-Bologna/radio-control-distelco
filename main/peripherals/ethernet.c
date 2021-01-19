@@ -8,8 +8,12 @@
 */
 #include <stdio.h>
 #include <string.h>
+#include <sys/socket.h>
 #include "freertos/FreeRTOS.h"
+#include "freertos/portmacro.h"
 #include "freertos/task.h"
+#include "freertos/event_groups.h"
+#include "freertos/semphr.h"
 #include "tcpip_adapter.h"
 #include "esp_eth.h"
 #include "esp_event.h"
@@ -17,51 +21,37 @@
 #include "driver/gpio.h"
 #include "sdkconfig.h"
 
-static const char *TAG = "ethernet";
+#include "ethernet.h"
 
-/** Event handler for Ethernet events */
-static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
-    uint8_t mac_addr[6] = {0};
-    /* we can get the ethernet driver handle from event data */
-    esp_eth_handle_t eth_handle = *(esp_eth_handle_t *)event_data;
 
-    switch (event_id) {
-        case ETHERNET_EVENT_CONNECTED:
-            esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, mac_addr);
-            ESP_LOGI(TAG, "Ethernet Link Up");
-            ESP_LOGI(TAG, "Ethernet HW Addr %02x:%02x:%02x:%02x:%02x:%02x", mac_addr[0], mac_addr[1], mac_addr[2],
-                     mac_addr[3], mac_addr[4], mac_addr[5]);
-            break;
-        case ETHERNET_EVENT_DISCONNECTED:
-            ESP_LOGI(TAG, "Ethernet Link Down");
-            break;
-        case ETHERNET_EVENT_START:
-            ESP_LOGI(TAG, "Ethernet Started");
-            break;
-        case ETHERNET_EVENT_STOP:
-            ESP_LOGI(TAG, "Ethernet Stopped");
-            break;
-        default:
-            break;
-    }
-}
+#define EVENT_GOT_IP 1
 
-/** Event handler for IP_EVENT_ETH_GOT_IP */
-static void got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
-    ip_event_got_ip_t *            event   = (ip_event_got_ip_t *)event_data;
-    const tcpip_adapter_ip_info_t *ip_info = &event->ip_info;
 
-    ESP_LOGI(TAG, "Ethernet Got IP Address");
-    ESP_LOGI(TAG, "~~~~~~~~~~~");
-    ESP_LOGI(TAG, "ETHIP:" IPSTR, IP2STR(&ip_info->ip));
-    ESP_LOGI(TAG, "ETHMASK:" IPSTR, IP2STR(&ip_info->netmask));
-    ESP_LOGI(TAG, "ETHGW:" IPSTR, IP2STR(&ip_info->gw));
-    ESP_LOGI(TAG, "~~~~~~~~~~~");
-}
+static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
+static void got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 
-void ethernet_init(void) {
+
+static const char *       TAG = "ethernet";
+static EventGroupHandle_t group;
+static SemaphoreHandle_t  sem;
+static void (*connected_cb)(void)    = NULL;
+static void (*disconnected_cb)(void) = NULL;
+static uint32_t current_ip           = 0;
+
+
+void ethernet_init(uint32_t ip) {
+    esp_err_t ret = ESP_OK;
+
+    group = xEventGroupCreate();
+    sem   = xSemaphoreCreateMutex();
+    ESP_LOGI(TAG, "Data structures initialized: %u", (unsigned int)(void *)group);
+
     tcpip_adapter_init();
     ESP_LOGI(TAG, "adapter initialized");
+    ret = tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_ETH);     // ret=0x5000 -> tcpip_adapter_invalid_params, very old
+                                                              // esp-idf didn't implementated this yet.
+    ESP_LOGI(TAG, "dhcp client stop RESULT: %d", ret);
+    // ethernet_set_ip(ip);
 
     ESP_ERROR_CHECK(esp_event_loop_create_default());
     ESP_ERROR_CHECK(tcpip_adapter_set_default_eth_handlers());
@@ -117,4 +107,102 @@ void ethernet_init(void) {
     ESP_LOGI(TAG, "Eth driver installed");
     ESP_ERROR_CHECK(esp_eth_start(eth_handle));
     ESP_LOGI(TAG, "Eth driver started");
+}
+
+
+void ethernet_set_ip(uint32_t ip) {
+    if (ethernet_is_connected(0) && ethernet_current_ip() == ip) {
+        // If the IP is the same do nothing
+        ESP_LOGI(TAG, "No change in ethernet config");
+        return;
+    }
+
+    ip4_addr_t printip;
+    printip.addr = ip;
+    ESP_LOGI(TAG, "Changing ip addr to:" IPSTR, IP2STR(&printip));
+
+    tcpip_adapter_ip_info_t ipInfo;
+
+    // myIp -> structure that save your static ip settings
+    ipInfo.ip.addr = ip;
+    inet_pton(AF_INET, "0.0.0.0", &ipInfo.gw);
+    inet_pton(AF_INET, "255.255.255.0", &ipInfo.netmask);
+
+    ESP_ERROR_CHECK(tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_ETH, &ipInfo));
+}
+
+
+/** Event handler for Ethernet events */
+static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
+    uint8_t mac_addr[6] = {0};
+    /* we can get the ethernet driver handle from event data */
+    esp_eth_handle_t eth_handle = *(esp_eth_handle_t *)event_data;
+
+    switch (event_id) {
+        case ETHERNET_EVENT_CONNECTED:
+            esp_eth_ioctl(eth_handle, ETH_CMD_G_MAC_ADDR, mac_addr);
+            ESP_LOGI(TAG, "Ethernet Link Up");
+            ESP_LOGI(TAG, "Ethernet HW Addr %02x:%02x:%02x:%02x:%02x:%02x", mac_addr[0], mac_addr[1], mac_addr[2],
+                     mac_addr[3], mac_addr[4], mac_addr[5]);
+            break;
+        case ETHERNET_EVENT_DISCONNECTED:
+            ESP_LOGI(TAG, "Ethernet Link Down");
+            xEventGroupClearBits(group, EVENT_GOT_IP);
+            xSemaphoreTake(sem, portMAX_DELAY);
+            if (disconnected_cb)
+                disconnected_cb();
+            xSemaphoreGive(sem);
+            break;
+        case ETHERNET_EVENT_START:
+            ESP_LOGI(TAG, "Ethernet Started");
+            break;
+        case ETHERNET_EVENT_STOP:
+            ESP_LOGI(TAG, "Ethernet Stopped");
+            break;
+        default:
+            break;
+    }
+}
+
+
+int ethernet_is_connected(TickType_t delay) {
+    BaseType_t res = xEventGroupWaitBits(group, EVENT_GOT_IP, 0, 1, delay);
+    return res == pdTRUE;
+}
+
+
+uint32_t ethernet_current_ip(void) {
+    xSemaphoreTake(sem, portMAX_DELAY);
+    uint32_t res = current_ip;
+    xSemaphoreGive(sem);
+    return res;
+}
+
+
+void ethernet_set_callbacks(void (*discb)(void), void (*conncb)(void)) {
+    xSemaphoreTake(sem, portMAX_DELAY);
+    disconnected_cb = discb;
+    connected_cb    = conncb;
+    xSemaphoreGive(sem);
+}
+
+
+/** Event handler for IP_EVENT_ETH_GOT_IP */
+static void got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
+    ip_event_got_ip_t *            event   = (ip_event_got_ip_t *)event_data;
+    const tcpip_adapter_ip_info_t *ip_info = &event->ip_info;
+
+    ESP_LOGI(TAG, "Ethernet Got IP Address");
+    ESP_LOGI(TAG, "~~~~~~~~~~~");
+    ESP_LOGI(TAG, "ETHIP:" IPSTR, IP2STR(&ip_info->ip));
+    ESP_LOGI(TAG, "ETHMASK:" IPSTR, IP2STR(&ip_info->netmask));
+    ESP_LOGI(TAG, "ETHGW:" IPSTR, IP2STR(&ip_info->gw));
+    ESP_LOGI(TAG, "~~~~~~~~~~~");
+
+    xEventGroupSetBits(group, EVENT_GOT_IP);
+    xSemaphoreTake(sem, portMAX_DELAY);
+    current_ip = ip_info->ip.addr;
+    if (connected_cb)
+        connected_cb();
+    xSemaphoreGive(sem);
 }

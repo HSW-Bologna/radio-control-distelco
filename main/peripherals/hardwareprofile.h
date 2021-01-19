@@ -14,6 +14,10 @@
 #define LCD_DATA_COMMAND GPIO_NUM_13
 #define LCD_CS           GPIO_NUM_16
 
+#define SPI_CS2 GPIO_NUM_17
+#define SPI_CS3 GPIO_NUM_12
+#define SPI_CS4 GPIO_NUM_2
+
 #define SPI_DOUT GPIO_NUM_33
 #define SPI_DIN  GPIO_NUM_34
 #define SPI_CLK  GPIO_NUM_14

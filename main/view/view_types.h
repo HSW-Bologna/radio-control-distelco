@@ -3,10 +3,17 @@
 
 #include "model/model.h"
 
+
+typedef struct {
+    int id, number;
+} view_obj_data_t;
+
+
 typedef enum {
     VIEW_EVENT_CODE_LVGL,
     VIEW_EVENT_CODE_OPEN,
     VIEW_EVENT_CODE_MODEL_UPDATE,
+    VIEW_EVENT_CODE_TEST_MANAGEMENT_RESPONSE,
     VIEW_EVENT_CODE_CUSTOM,
 } view_event_code_t;
 
@@ -14,9 +21,10 @@ typedef struct {
     view_event_code_t code;
     union {
         struct {
-            int   lv_event;
-            void *data;
+            int              lv_event;
+            view_obj_data_t *data;
         } lvgl;
+        uint8_t management_registers[10];
     };
 } view_event_t;
 
@@ -25,6 +33,7 @@ typedef enum {
     VIEW_PAGE_COMMAND_CODE_NOTHING = 0,
     VIEW_PAGE_COMMAND_CODE_REBASE,
     VIEW_PAGE_COMMAND_CODE_CHANGE_PAGE,
+    VIEW_PAGE_COMMAND_CODE_CHANGE_PAGE_EXTRA,
     VIEW_PAGE_COMMAND_CODE_BACK,
     VIEW_PAGE_COMMAND_CODE_UPDATE,
 } view_page_command_code_t;
@@ -33,18 +42,24 @@ typedef struct {
     view_page_command_code_t code;
 
     union {
-        const void *page;
+        struct {
+            const void *page;
+            void *      extra;
+        };
     };
 } view_page_command_t;
 
 
 typedef enum {
     VIEW_CONTROLLER_COMMAND_CODE_NOTHING,
+    VIEW_CONTROLLER_COMMAND_CODE_SAVE_CONFIG,
+    VIEW_CONTROLLER_COMMAND_MANAGEMENT_SEND,
 } view_controller_command_code_t;
 
 
 typedef struct {
     view_controller_command_code_t code;
+    uint8_t                        data_reg;
 } view_controller_command_t;
 
 
@@ -52,11 +67,6 @@ typedef struct {
     view_page_command_t       vmsg;
     view_controller_command_t cmsg;
 } view_message_t;
-
-
-typedef struct {
-    int id, number;
-} view_obj_data_t;
 
 
 

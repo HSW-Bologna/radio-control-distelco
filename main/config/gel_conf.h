@@ -8,7 +8,7 @@
  * Page manager
  */
 
-#define PMAN_NAVIGATION_DEPTH 4
+#define PMAN_NAVIGATION_DEPTH 8
 
 typedef view_message_t pman_message_t;
 

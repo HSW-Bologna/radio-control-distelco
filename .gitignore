@@ -8,6 +8,8 @@ tmp
 *.pem
 .vscode
 .cache
+*.bin
+simulated
 
 export.sh
 *.log

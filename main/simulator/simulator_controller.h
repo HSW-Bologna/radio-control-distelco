@@ -5,5 +5,6 @@
 #include "model/model.h"
 
 void controller_process_msg(view_controller_command_t msg, model_t *model);
+void controller_init(model_t *model);
 
 #endif

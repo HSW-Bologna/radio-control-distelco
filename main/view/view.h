@@ -17,7 +17,14 @@ void view_register_default_callback_number(lv_obj_t *obj, int id, int num);
 void view_destroy_all(void *data, void *extra);
 void view_close_all(void *data);
 
-extern const pman_page_t page_splash;
+extern const pman_page_t page_main;
+extern const pman_page_t page_settings;
+extern const pman_page_t page_menu;
+extern const pman_page_t page_channels;
+extern const pman_page_t page_channel_settings;
+extern const pman_page_t page_master_settings;
+extern const pman_page_t page_minion_settings;
+extern const pman_page_t page_test;
 
 
 #endif
