@@ -45,7 +45,7 @@ static void *create_page(model_t *model, void *extra) {
 
 
 static void open_page(model_t *model, void *args) {
-    struct page_data *data = args;
+    // struct page_data *data = args;
 
     lv_obj_t *back = view_common_back_button(BACK_BTN_ID);
 

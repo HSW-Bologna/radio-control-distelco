@@ -14,7 +14,6 @@
 /* This demo uses heap_3.c (the libc provided malloc() and free()). */
 
 /*-----------------------------------------------------------*/
-extern void main_blinky(void);
 static void traceOnEnter(void);
 
 /*

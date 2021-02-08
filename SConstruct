@@ -63,6 +63,8 @@ MAIN = "main"
 COMPONENTS = "components"
 LVGL = "{}/lvgl".format(COMPONENTS)
 FREERTOS = 'main/simulator/FreeRTOS/FreeRTOS'
+CJSON = 'main/simulator/cJSON'
+B64 = 'main/simulator/b64'
 
 CFLAGS = [
     "-Wall",
@@ -91,7 +93,7 @@ FREERTOSPATH = [
 
 CPPPATH = [
     COMPONENTS, f"{LVGL}/src", f"{LVGL}", f'{MAIN}/simulator/port', f'#{MAIN}',
-    f"#{MAIN}/config", f"{MAIN}/simulator",
+    f"#{MAIN}/config", f"{MAIN}/simulator", CJSON, B64
 ] + FREERTOSPATH
 
 
@@ -167,12 +169,16 @@ def main():
     sources += Glob('main/simulator/port/*.c')
     sources += [File(filename) for filename in Path('main/view').rglob('*.c')]
     sources += [File(filename)
+                for filename in Path('main/controller').rglob('*.c')]
+    sources += [File(filename)
                 for filename in Path('main/network').rglob('*.c')]
     sources += [File(filename) for filename in Path('main/model').rglob('*.c')]
     sources += [
         File(filename) for filename in Path(f'{LVGL}/src').rglob('*.c')
     ]
     sources += FREERTOSSRC
+    sources += [File(f'{CJSON}/cJSON.c')]
+    sources += [File(f'{B64}/encode.c'), File(f'{B64}/decode.c'), File(f'{B64}/buffer.c')]
 
     prog = env.Program(PROGRAM, sources + objects, LIBPATH=LIBPATH)
     PhonyTargets('run', './simulated', prog, env)

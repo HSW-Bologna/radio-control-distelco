@@ -1,2 +1,2 @@
-idf_component_register(SRC_DIRS . config model view view/pages view/theme controller controller/storage network peripherals peripherals/display utils 
+idf_component_register(SRC_DIRS . config model view view/pages view/images view/theme controller controller/storage network peripherals peripherals/display utils 
                     INCLUDE_DIRS .)

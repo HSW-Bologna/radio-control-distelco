@@ -1,6 +1,5 @@
 #include <stdlib.h>
 
-#include "lv_widgets/lv_dropdown.h"
 #include "lvgl.h"
 #include "gel/pagemanager/page_manager.h"
 
@@ -25,19 +24,19 @@ struct page_data {
 static void update_ip(struct page_data *data, model_t *model) {
     int ip1, ip2, ip3, ip4;
     model_get_channel_master_ip_parts(model, &ip1, &ip2, &ip3, &ip4, data->channel, data->master);
-    lv_dropdown_set_selected(data->ip1, ip1);
-    lv_dropdown_set_selected(data->ip2, ip2);
-    lv_dropdown_set_selected(data->ip3, ip3);
-    lv_dropdown_set_selected(data->ip4, ip4);
+    lv_roller_set_selected(data->ip1, ip1, LV_ANIM_OFF);
+    lv_roller_set_selected(data->ip2, ip2, LV_ANIM_OFF);
+    lv_roller_set_selected(data->ip3, ip3, LV_ANIM_OFF);
+    lv_roller_set_selected(data->ip4, ip4, LV_ANIM_OFF);
 }
 
 
 static void set_ip(model_t *model, struct page_data *data) {
     int ip1, ip2, ip3, ip4;
-    ip1 = lv_dropdown_get_selected(data->ip1);
-    ip2 = lv_dropdown_get_selected(data->ip2);
-    ip3 = lv_dropdown_get_selected(data->ip3);
-    ip4 = lv_dropdown_get_selected(data->ip4);
+    ip1 = lv_roller_get_selected(data->ip1);
+    ip2 = lv_roller_get_selected(data->ip2);
+    ip3 = lv_roller_get_selected(data->ip3);
+    ip4 = lv_roller_get_selected(data->ip4);
     model_set_channel_master_ip(model, IP_ADDR(ip1, ip2, ip3, ip4), data->channel, data->master);
 }
 

@@ -1,4 +1,5 @@
 #include <stdlib.h>
+#include <stdio.h>
 
 #include "lvgl.h"
 #include "gel/pagemanager/page_manager.h"
@@ -10,33 +11,12 @@
 
 enum {
     BACK_BTN_ID,
-    IP_BTN_ID,
+    CABLE_CB_ID,
 };
-
 
 struct page_data {
-    lv_obj_t *ip1, *ip2, *ip3, *ip4;
+    lv_obj_t *cables[4];
 };
-
-
-static void update_ip(struct page_data *data, model_t *model) {
-    int ip1, ip2, ip3, ip4;
-    model_get_my_ip_parts(model, &ip1, &ip2, &ip3, &ip4);
-    lv_roller_set_selected(data->ip1, ip1, LV_ANIM_OFF);
-    lv_roller_set_selected(data->ip2, ip2, LV_ANIM_OFF);
-    lv_roller_set_selected(data->ip3, ip3, LV_ANIM_OFF);
-    lv_roller_set_selected(data->ip4, ip4, LV_ANIM_OFF);
-}
-
-
-static void set_ip(model_t *model, struct page_data *data) {
-    int ip1 = lv_roller_get_selected(data->ip1);
-    int ip2 = lv_roller_get_selected(data->ip2);
-    int ip3 = lv_roller_get_selected(data->ip3);
-    int ip4 = lv_roller_get_selected(data->ip4);
-    model_set_my_ip_parts(model, ip1, ip2, ip3, ip4);
-}
-
 
 static void *create_page(model_t *model, void *extra) {
     struct page_data *data = malloc(sizeof(struct page_data));
@@ -46,21 +26,23 @@ static void *create_page(model_t *model, void *extra) {
 
 static void open_page(model_t *model, void *args) {
     struct page_data *data = args;
-
-    lv_obj_t *back = view_common_back_button(BACK_BTN_ID);
+    lv_obj_t *        back = view_common_back_button(BACK_BTN_ID);
 
     lv_obj_t *title = lv_label_create(lv_scr_act(), NULL);
     lv_obj_set_style_local_text_font(title, LV_LABEL_PART_MAIN, LV_STATE_DEFAULT, lv_theme_get_font_title());
-    lv_label_set_text(title, "Impostazioni");
+    lv_label_set_text(title, "Cavi");
     lv_obj_align(title, back, LV_ALIGN_OUT_RIGHT_MID, 16, 0);
 
-    lv_obj_t *cont = view_common_ip_widget(lv_scr_act(), &data->ip1, &data->ip2, &data->ip3, &data->ip4);
-    lv_obj_align(cont, NULL, LV_ALIGN_IN_TOP_MID, 0, 60);
-
-    view_register_default_callback(data->ip1, IP_BTN_ID);
-    view_register_default_callback(data->ip2, IP_BTN_ID);
-    view_register_default_callback(data->ip3, IP_BTN_ID);
-    view_register_default_callback(data->ip4, IP_BTN_ID);
+    for (size_t i = 0; i < 4; i++) {
+        lv_obj_t *cb         = lv_checkbox_create(lv_scr_act(), NULL);
+        char      string[32] = {0};
+        snprintf(string, 32, "Cavo radiante %i", i + 1);
+        lv_checkbox_set_text(cb, string);
+        lv_checkbox_set_checked(cb, model_is_cable_enabled(model, i));
+        lv_obj_align(cb, NULL, LV_ALIGN_IN_TOP_MID, 0, 64 + 42 * i);
+        view_register_default_callback_number(cb, CABLE_CB_ID, i);
+        data->cables[i] = cb;
+    }
 }
 
 
@@ -70,10 +52,6 @@ static view_message_t process_page_event(model_t *model, void *arg, view_event_t
     view_message_t msg = {0};
 
     switch (event.code) {
-        case VIEW_EVENT_CODE_OPEN:
-            msg.vmsg.code = VIEW_PAGE_COMMAND_CODE_UPDATE;
-            break;
-
         case VIEW_EVENT_CODE_CUSTOM:
             break;
 
@@ -84,11 +62,18 @@ static view_message_t process_page_event(model_t *model, void *arg, view_event_t
                         msg.cmsg.code = VIEW_CONTROLLER_COMMAND_CODE_SAVE_CONFIG;
                         msg.vmsg.code = VIEW_PAGE_COMMAND_CODE_BACK;
                         break;
+
+                    default:
+                        break;
                 }
             } else if (event.lvgl.lv_event == LV_EVENT_VALUE_CHANGED) {
                 switch (event.lvgl.data->id) {
-                    case IP_BTN_ID:
-                        set_ip(model, data);
+                    case CABLE_CB_ID:
+                        model_set_cable(model, event.lvgl.data->number,
+                                        lv_checkbox_is_checked(data->cables[event.lvgl.data->number]));
+                        break;
+
+                    default:
                         break;
                 }
             }
@@ -102,16 +87,9 @@ static view_message_t process_page_event(model_t *model, void *arg, view_event_t
 }
 
 
-static void update_page(model_t *model, void *arg) {
-    struct page_data *data = arg;
-    update_ip(data, model);
-}
-
-
-const pman_page_t page_settings = {
+const pman_page_t page_cavi = {
     .create        = create_page,
     .open          = open_page,
-    .update        = update_page,
     .close         = view_close_all,
     .destroy       = view_destroy_all,
     .process_event = process_page_event,

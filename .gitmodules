@@ -7,3 +7,9 @@
 [submodule "main/simulator/FreeRTOS"]
 	path = main/simulator/FreeRTOS
 	url = https://github.com/FreeRTOS/FreeRTOS.git
+[submodule "main/simulator/cJSON"]
+	path = main/simulator/cJSON
+	url = https://github.com/DaveGamble/cJSON.git
+[submodule "main/simulator/b64.c"]
+	path = main/simulator/b64
+	url = https://github.com/littlstar/b64.c.git

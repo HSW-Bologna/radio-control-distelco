@@ -9,42 +9,12 @@
 #include "view/theme/theme.h"
 #include "view/theme/style.h"
 
-
-void controller_gui_init(model_t *model) {
-    display_init();
-    ssd2119_init();
-    tsc2046_init();
-
-    lv_init();
-    lv_theme_set_act(theme_init(LV_THEME_DEFAULT_COLOR_PRIMARY, LV_THEME_DEFAULT_COLOR_SECONDARY,
-                                LV_THEME_MATERIAL_FLAG_DARK | LV_THEME_MATERIAL_FLAG_NO_FOCUS,
-                                LV_THEME_DEFAULT_FONT_SMALL, LV_THEME_DEFAULT_FONT_NORMAL,
-                                LV_THEME_DEFAULT_FONT_SUBTITLE, LV_THEME_DEFAULT_FONT_TITLE));
-    style_init();
-
-    static lv_color_t    buf[DISP_COLOR_BUF_SIZE];
-    static lv_disp_buf_t disp_buf;
-    lv_disp_buf_init(&disp_buf, buf, NULL, DISP_COLOR_BUF_SIZE);
-
-    lv_disp_drv_t disp_drv;
-    lv_disp_drv_init(&disp_drv);
-    disp_drv.buffer   = &disp_buf;
-    disp_drv.hor_res  = 320;
-    disp_drv.ver_res  = 240;
-    disp_drv.flush_cb = ssd2119_flush;
-    lv_disp_drv_register(&disp_drv);
-
-    lv_indev_drv_t indev_drv;
-    lv_indev_drv_init(&indev_drv);
-    indev_drv.read_cb = tsc2046_touch_read;
-    indev_drv.type    = LV_INDEV_TYPE_POINTER;
-    lv_indev_drv_register(&indev_drv);
-
-    view_init(model);
-}
+#include "gel/timer/timecheck.h"
 
 
 void controller_manage_gui(model_t *model) {
+    static unsigned long timestamp = 0;
+    ;
     view_message_t umsg;
     view_event_t   event;
 
@@ -53,5 +23,10 @@ void controller_manage_gui(model_t *model) {
     while (view_get_next_msg(model, &umsg, &event)) {
         controller_process_msg(umsg.cmsg, model);
         view_process_msg(umsg.vmsg, model);
+    }
+
+    if (is_expired(timestamp, get_millis(), 800)) {
+        lv_obj_invalidate(lv_scr_act());
+        timestamp = get_millis();
     }
 }

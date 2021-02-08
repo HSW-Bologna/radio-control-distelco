@@ -5,12 +5,14 @@
  */
 #include "freertos/FreeRTOS.h"
 #include "freertos/semphr.h"
+#include "freertos/task.h"
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include <string.h>
 #include "lvgl.h"
 #include "tsc2046.h"
 #include "../hardwareprofile.h"
+#include "../system.h"
 
 /*********************
  *      DEFINES
@@ -103,8 +105,11 @@ static uint16_t tsc_data(spi_device_handle_t spi, const uint8_t data) {
         .tx_buffer = &datas,     // Data
         .flags     = SPI_TRANS_USE_RXDATA,
     };
+
+    system_spi_take();
     ret = spi_device_polling_transmit(spi, &t);     // Transmit!
     assert(ret == ESP_OK);                          // Should have had no issues.
+    system_spi_give();
 
     return (t.rx_data[1] << 8 | t.rx_data[2]) >> 3;
 }

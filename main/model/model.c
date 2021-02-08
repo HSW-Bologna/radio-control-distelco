@@ -1,14 +1,20 @@
 #include <assert.h>
+#include <string.h>
 
 #include "model.h"
+#include "model/channel.h"
 
 
 static uint32_t next_ip_addr(model_t *model, uint32_t ip);
 
 
 void model_init(model_t *model) {
-    model->ip_addr = IP_ADDR(192, 168, 1, 10);
-    model->to_save = 0;
+    model->ip_addr                = IP_ADDR(192, 168, 1, 10);
+    model->to_save                = 0;
+    model->cavi                   = 0;
+    model->anomalie_cavi          = 0;
+    model->network_config_changed = 0;
+    model->connected              = 0;
 
     for (size_t i = 0; i < MAX_CHANNELS; i++)
         channel_init(&model->channels[i]);
@@ -161,21 +167,27 @@ int model_ip_address_already_in_use(model_t *model, uint32_t ip) {
 }
 
 
+void model_channel_device_guasti(model_t *model, size_t c, device_type_t t, size_t m, int *radio, int *antenna) {
+    assert(c < MAX_CHANNELS);
+    channel_device_guasti(&model->channels[c], t, m, radio, antenna);
+}
+
+
 int model_is_channel_ok(model_t *model, size_t c) {
     assert(c < MAX_CHANNELS);
-    return channel_is_ok(&model->channels[c]);
+    return model->connected && channel_is_ok(&model->channels[c]);
 }
 
 
-void model_channel_master_set_ok(model_t *model, size_t c, size_t m, int ok) {
+int model_channel_guasto_radio(model_t *model, size_t c) {
     assert(c < MAX_CHANNELS);
-    channel_set_master_ok(&model->channels[c], m, ok);
+    return channel_guasto_radio(&model->channels[c]);
 }
 
 
-void model_channel_minion_set_ok(model_t *model, size_t c, size_t m, int ok) {
+int model_channel_guasto_antenna(model_t *model, size_t c) {
     assert(c < MAX_CHANNELS);
-    channel_set_minion_ok(&model->channels[c], m, ok);
+    return channel_guasto_antenna(&model->channels[c]);
 }
 
 
@@ -220,6 +232,87 @@ void model_set_channel_minion_name(model_t *model, size_t c, size_t m, char *nam
 void model_reset_channel_state(model_t *model, size_t c) {
     assert(c < MAX_CHANNELS);
     channel_reset(&model->channels[c]);
+}
+
+
+void model_set_cable(model_t *model, size_t cable, int enabled) {
+    assert(cable < 4);
+    model->to_save = 1;
+    if (enabled)
+        model->cavi |= 1 << cable;
+    else
+        model->cavi &= ~(1 << cable);
+}
+
+
+void model_set_cable_anomaly(model_t *model, uint8_t anomaly) {
+    model->anomalie_cavi = anomaly;
+}
+
+
+int model_is_cable_enabled(model_t *model, size_t cable) {
+    assert(cable < 4);
+    return (model->cavi & (1 << cable)) > 0;
+}
+
+
+int model_is_cable_ok(model_t *model, size_t cable) {
+    assert(cable < 4);
+    return model_is_cable_enabled(model, cable) && ((model->anomalie_cavi & (1 << cable)) == 0);
+}
+
+
+uint8_t model_cables(model_t *model) {
+    return model->cavi;
+}
+
+
+void model_update_channel(model_t *model, device_update_t update) {
+    assert(update.channel < MAX_CHANNELS);
+    if (update.info.connected) {
+        channel_set_device_info(&model->channels[update.channel], update.master, update.index, update.info);
+    } else {
+        channel_set_device_connected(&model->channels[update.channel], update.master, update.index, 0);
+    }
+}
+
+
+device_info_t model_get_channel_master_info(model_t *model, size_t c, size_t m) {
+    assert(c < MAX_CHANNELS);
+    return channel_get_device_info(&model->channels[c], DEVICE_TYPE_MASTER, m);
+}
+
+
+device_info_t model_get_channel_minion_info(model_t *model, size_t c, size_t m) {
+    assert(c < MAX_CHANNELS);
+    return channel_get_device_info(&model->channels[c], DEVICE_TYPE_MINION, m);
+}
+
+
+char *model_get_channel_minion_name(model_t *model, size_t channel, size_t m) {
+    assert(channel < MAX_CHANNELS);
+    return channel_get_minion_name(&model->channels[channel], m);
+}
+
+
+char *model_get_channel_master_name(model_t *model, size_t channel, size_t m) {
+    assert(channel < MAX_CHANNELS);
+    return channel_get_master_name(&model->channels[channel], m);
+}
+
+
+void model_set_spi_received(model_t *model, uint8_t *buffer) {
+    memcpy(model->spi_received, buffer, 14);
+}
+
+
+void model_set_connected(model_t *model, int connected) {
+    model->connected = connected;
+}
+
+
+int model_get_connected(model_t *model) {
+    return model->connected;
 }
 
 

@@ -19,6 +19,7 @@
 #include "freertos/FreeRTOS.h"
 #include "freertos/task.h"
 #include "esp_log.h"
+#include "../system.h"
 
 /*********************
  *      DEFINES
@@ -46,6 +47,7 @@ static void ssd2119_set_window(int x1, int x2, int y1, int y2);
  **********************/
 
 void ssd2119_init(void) {
+    system_spi_take();
     display_set_reset(1);
     vTaskDelay(pdMS_TO_TICKS(30));
     display_set_reset(0);
@@ -157,6 +159,8 @@ void ssd2119_init(void) {
     vTaskDelay(pdMS_TO_TICKS(150));
 
     ssd2119_command(0x0022);     // RAM data write/read
+
+    system_spi_give();
 }
 
 
@@ -177,6 +181,7 @@ void ssd2119_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *c
     lv_coord_t act_x2 = area->x2 > SSD2119_HOR_RES - 1 ? SSD2119_HOR_RES - 1 : area->x2;
     lv_coord_t act_y2 = area->y2 > SSD2119_VER_RES - 1 ? SSD2119_VER_RES - 1 : area->y2;
 
+    system_spi_take();
     ssd2119_set_window(act_x1, act_x2, act_y1, act_y2);
     ssd2119_command(0x0022);     // RAM data write/read
 
@@ -185,21 +190,16 @@ void ssd2119_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *c
     int totbytes = width * 2 * height;
     int index    = 0;
 
-    display_set_data_command(SSD2119_DATA_MODE);
+    // display_set_data_command(SSD2119_DATA_MODE);
     while (index < totbytes) {
         int chunk = totbytes - index > MAX_TRANSFER_SIZE ? MAX_TRANSFER_SIZE : totbytes - index;
-        display_send_data(&buffer[index], chunk);
+        display_send_data_command(&buffer[index], chunk, SSD2119_DATA_MODE);
         index += chunk;
     }
+    system_spi_give();
+
     if (disp_drv)
         lv_disp_flush_ready(disp_drv);
-
-    /*display_set_data_command(SSD2119_DATA_MODE);
-    for (int i = 0; i < height; i++)
-    {
-        display_send_data(&buffer[i * width * 2], width * 2);
-    }
-    lv_disp_flush_ready(disp_drv);*/
 }
 
 /**
@@ -207,8 +207,8 @@ void ssd2119_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *c
  * @param cmd the command
  */
 static void ssd2119_command(uint8_t cmd) {
-    display_set_data_command(SSD2119_CMD_MODE);
-    display_send_data(&cmd, 1);
+    // display_set_data_command(SSD2119_CMD_MODE);
+    display_send_data_command(&cmd, 1, SSD2119_CMD_MODE);
 }
 
 /**
@@ -217,12 +217,13 @@ static void ssd2119_command(uint8_t cmd) {
  */
 static void ssd2119_data(uint16_t data) {
     uint8_t high, low;
-    high = data >> 8;
-    low  = data & 0xFF;
-    display_set_data_command(SSD2119_DATA_MODE);
-    // LV_DRV_DISP_SPI_WR_ARRAY(buffer, 2);
-    display_send_data(&high, 1);
-    display_send_data(&low, 1);
+    high              = data >> 8;
+    low               = data & 0xFF;
+    uint8_t buffer[2] = {high, low};
+    // display_set_data_command(SSD2119_DATA_MODE);
+    // display_send_data_command(&high, 1, SSD2119_DATA_MODE);
+    // display_send_data_command(&low, 1, SSD2119_DATA_MODE);
+    display_send_data_command(buffer, 2, SSD2119_DATA_MODE);
 }
 
 static void ssd2119_set_window(int x1, int x2, int y1, int y2) {
@@ -238,29 +239,3 @@ static void ssd2119_set_window(int x1, int x2, int y1, int y2) {
     ssd2119_command(0x0046);        // Horizontal RAM address position
     ssd2119_data(x2);               // Page 57 of SSD2119 datasheet
 }
-
-void ssd2119_test(uint16_t color)
-// void ssd2119_test(uint16_t color, int x1, int y1, int x2, int y2)
-{
-    // uint8_t buffer[2] = {0xF8, 0};
-    uint8_t buffer[SSD2119_HOR_RES * 2] = {0};
-    for (int i = 0; i < SSD2119_HOR_RES; i++) {
-        buffer[i * 2]     = color >> 8;
-        buffer[i * 2 + 1] = color & 0xFF;
-    }
-    ssd2119_set_window(19, 82, 23, 30);
-    ssd2119_command(0x0022);     // RAM data write/read
-
-    display_set_data_command(SSD2119_DATA_MODE);
-    for (int i = 0; i < SSD2119_VER_RES; i++) {
-        display_send_data(&buffer[0], SSD2119_HOR_RES * 2);
-
-        /*for (int j = 0; j < SSD2119_VER_RES; j++)
-        {
-            display_set_data_command(SSD2119_DATA_MODE);
-            display_send_data(&buffer[0], 2);
-        }*/
-    }
-}
-
-//#endif

@@ -6,4 +6,7 @@
  */
 void system_spi_init(void);
 
+void system_spi_take(void);
+void system_spi_give(void);
+
 #endif

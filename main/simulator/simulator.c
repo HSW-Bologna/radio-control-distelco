@@ -8,9 +8,10 @@
 
 #include "utils/utils.h"
 #include "view/view.h"
-#include "simulator_controller.h"
-#include "gui.h"
-#include "simulator_storage.h"
+#include "controller/controller.h"
+#include "controller/gui.h"
+#include "display/monitor.h"
+#include "indev/mouse.h"
 
 
 void test(void *arg) {
@@ -24,13 +25,18 @@ void app_main(void *arg) {
     (void)arg;
     model_t model = {0};
 
+    monitor_init();
+    mouse_init();
+
     model_init(&model);
+    view_init(&model, monitor_flush, mouse_read);
     controller_init(&model);
-    view_init(&model);
 
     for (;;) {
         controller_manage_gui(&model);
-        usleep(10000UL);
+        controller_manage(&model);
+
+        vTaskDelay(pdMS_TO_TICKS(10));
     }
 
     vTaskDelete(NULL);

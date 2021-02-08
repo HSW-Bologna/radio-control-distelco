@@ -16,6 +16,8 @@
 #include "controller/controller.h"
 #include "controller/gui.h"
 #include "peripherals/display/SSD2119.h"
+#include "peripherals/display/display.h"
+#include "peripherals/display/tsc2046.h"
 #include "peripherals/management_board.h"
 #include "model/model.h"
 #include "esp_ping.h"
@@ -60,12 +62,15 @@ void app_main() {
     system_spi_init();
     heartbeat_init(2);
     management_board_init();
+    display_init();
+    ssd2119_init();
+    tsc2046_init();
 
     ethernet_init(model_get_my_ip(&model));
 
     model_init(&model);
+    view_init(&model, ssd2119_flush, tsc2046_touch_read);
     controller_init(&model);
-    controller_gui_init(&model);
 
     // xTaskCreate(tcp_client_task, "tcp_client", 4096, NULL, 5, NULL);
 

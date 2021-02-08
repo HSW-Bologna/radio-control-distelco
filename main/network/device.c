@@ -30,8 +30,8 @@ enum {
     command_set_out2_gain,
     command_set_remotes,
     command_set_single_remote,
+    command_status2,
 } command_packet_commands;
-
 
 /**
  * struttura dati del messaggio
@@ -45,13 +45,13 @@ typedef struct __attribute__((__packed__)) {
 
 static void flush_rx(int socket);
 
-static const char *TAG = "ConnectionManager";
+static const char *TAG = "Device";
 
 
-int device_get_state(int socket, status_packet_t *status) {
+int device_get_state(int socket, status2_packet_t *status) {
     flush_rx(socket);
 
-    command_packet_t payload    = {.sync = MAGIC, .version = 1, .command = command_status};
+    command_packet_t payload    = {.sync = MAGIC, .version = 1, .command = command_status2};
     uint8_t          buffer[40] = {0};
     memcpy(buffer, &payload, sizeof(command_packet_t));
     int err = send(socket, buffer, 40, 0);
@@ -62,16 +62,15 @@ int device_get_state(int socket, status_packet_t *status) {
 
     uint8_t *receive   = (uint8_t *)status;
     size_t   bytesread = 0;
-    size_t   toreceive = sizeof(status_packet_t);
+    size_t   toreceive = sizeof(status2_packet_t);
 
     while (bytesread < toreceive) {
         int res = recv(socket, &receive[bytesread], toreceive - bytesread, 0);
 
         if (res > 0) {
             bytesread += res;
-            ESP_LOGI(TAG, "%i bytes read of %i", bytesread, toreceive);
         } else {
-            ESP_LOGE(TAG, "Timeout!");
+            ESP_LOGE(TAG, "Timeout after %i bytes!", bytesread);
             return -1;
         }
     }
@@ -175,7 +174,7 @@ int device_connect(uint32_t ip) {
         return -1;
     }
 
-    struct timeval tout = {.tv_sec = 0, .tv_usec = 200 * 1000UL};
+    struct timeval tout = {.tv_sec = 0, .tv_usec = 300 * 1000UL};
     if (setsockopt(sock, SOL_SOCKET, SO_RCVTIMEO, &tout, sizeof(tout))) {
         ESP_LOGE(TAG, "Error setsockopt (%s)", strerror(errno));
         TEARDOWN();
