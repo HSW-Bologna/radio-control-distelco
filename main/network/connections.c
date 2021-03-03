@@ -172,6 +172,7 @@ static void device_update(QueueHandle_t queue, size_t channel, int master, size_
             {
                 .guasto_radio   = guasto,
                 .failed_tx      = packet->failed_tx,
+                .tx_disabled    = packet->tx_disable,
                 .guasto_antenna = packet->failed_antenna,
                 .connected      = 1,
             },

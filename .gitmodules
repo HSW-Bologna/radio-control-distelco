@@ -4,12 +4,12 @@
 [submodule "components/generic_embedded_libs"]
 	path = components/generic_embedded_libs
 	url = https://github.com/Maldus512/generic_embedded_libs.git
-[submodule "main/simulator/FreeRTOS"]
-	path = main/simulator/FreeRTOS
-	url = https://github.com/FreeRTOS/FreeRTOS.git
 [submodule "main/simulator/cJSON"]
 	path = main/simulator/cJSON
 	url = https://github.com/DaveGamble/cJSON.git
 [submodule "main/simulator/b64.c"]
 	path = main/simulator/b64
 	url = https://github.com/littlstar/b64.c.git
+[submodule "main/simulator/freertos-simulator"]
+	path = main/simulator/freertos-simulator
+	url = https://github.com/Maldus512/freertos-simulator.git

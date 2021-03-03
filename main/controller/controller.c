@@ -7,6 +7,7 @@
 #include "gel/timer/timecheck.h"
 #include "view/view.h"
 #include "network/connections.h"
+#include "network/api_manager.h"
 #include "peripherals/ethernet.h"
 #include "peripherals/storage.h"
 #include "peripherals/management_board.h"
@@ -29,6 +30,7 @@ void controller_init(model_t *model) {
     connections_init();
     storage_init();
     configuration_load(model);
+    api_manager_init();
     ethernet_set_ip(model_get_my_ip(model));
     ethernet_set_callbacks(connections_clear, restart_connections);
     view_rebase_page(model, &page_main);
@@ -37,6 +39,10 @@ void controller_init(model_t *model) {
 
 void controller_process_msg(view_controller_command_t msg, model_t *model) {
     switch (msg.code) {
+        case VIEW_CONTROLLER_COMMAND_REENABLE_TX:
+            api_manager_enable_async(msg.addr);
+            break;
+
         case VIEW_CONTROLLER_COMMAND_CODE_SAVE_CONFIG:
             if (model_is_to_save(model)) {
                 configuration_save(model);
@@ -138,6 +144,7 @@ void controller_manage(model_t *model) {
         uint8_t buffer[14] = {0};
         management_board_read_response(buffer);
         model_set_spi_received(model, buffer);
+        model_set_errore_scheda_gestione(model, management_board_error());
         if (!update)
             view_event((view_event_t){.code = VIEW_EVENT_CODE_MODEL_UPDATE});
     }

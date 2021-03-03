@@ -49,11 +49,11 @@ static void ssd2119_set_window(int x1, int x2, int y1, int y2);
 void ssd2119_init(void) {
     system_spi_take();
     display_set_reset(1);
-    vTaskDelay(pdMS_TO_TICKS(30));
+    vTaskDelay(pdMS_TO_TICKS(10));
     display_set_reset(0);
-    vTaskDelay(pdMS_TO_TICKS(30));
+    vTaskDelay(pdMS_TO_TICKS(10));
     display_set_reset(1);
-    vTaskDelay(pdMS_TO_TICKS(30));
+    vTaskDelay(pdMS_TO_TICKS(10));
 
     ssd2119_command(0x0028);     // VCOM OTP
     ssd2119_data(0x0006);        // Page 55-56 of SSD2119 datasheet

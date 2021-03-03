@@ -5,6 +5,7 @@
 #include "gel/pagemanager/page_manager.h"
 
 #include "view/view.h"
+#include "view/common.h"
 #include "view/theme/style.h"
 #include "model/model.h"
 
@@ -14,6 +15,8 @@ LV_IMG_DECLARE(img_logo_distelco);
 enum {
     CONFIG_BTN_ID,
     CHANNEL_LED_ID,
+    PASSWORD_POPUP_ID,
+    OTHER_SHEET_ID,
 };
 
 struct page_data {
@@ -25,6 +28,9 @@ struct page_data {
 
     lv_obj_t *lrete;
     lv_obj_t *lbat;
+    lv_obj_t *lguasto;
+
+    lv_obj_t *popup;
 
     int guasto_rete_alimentazione;
     int batteria_bassa;
@@ -114,13 +120,31 @@ static void update_canali(struct page_data *data, model_t *model) {
 
 
 static void update_cavi(struct page_data *data, model_t *model) {
+    if (model_get_errore_scheda_gestione(model)) {
+        view_common_set_hidden(data->cablecont, 1);
+        view_common_set_hidden(data->lbat, 1);
+        view_common_set_hidden(data->lrete, 1);
+        view_common_set_hidden(data->lguasto, 0);
+    } else {
+        view_common_set_hidden(data->cablecont, 0);
+        view_common_set_hidden(data->lbat, 0);
+        view_common_set_hidden(data->lrete, 0);
+        view_common_set_hidden(data->lguasto, 1);
+    }
+
     for (size_t i = 0; i < MAX_CABLES; i++) {
         if (model_is_cable_enabled(model, i)) {
             assert(data->cable_leds[i]);
-            lv_obj_set_style_local_bg_color(data->cable_leds[i], LV_LED_PART_MAIN, LV_STATE_DEFAULT,
-                                            model_is_cable_ok(model, i) ? LV_COLOR_GREEN : LV_COLOR_RED);
-            lv_obj_set_style_local_shadow_color(data->cable_leds[i], LV_LED_PART_MAIN, LV_STATE_DEFAULT,
-                                                model_is_cable_ok(model, i) ? LV_COLOR_GREEN : LV_COLOR_RED);
+            if (model_is_cable_ok(model, i)) {
+                lv_obj_set_style_local_bg_color(data->cable_leds[i], LV_LED_PART_MAIN, LV_STATE_DEFAULT,
+                                                LV_COLOR_GREEN);
+                lv_obj_set_style_local_shadow_color(data->cable_leds[i], LV_LED_PART_MAIN, LV_STATE_DEFAULT,
+                                                    LV_COLOR_GREEN);
+            } else {
+                lv_obj_set_style_local_bg_color(data->cable_leds[i], LV_LED_PART_MAIN, LV_STATE_DEFAULT, LV_COLOR_RED);
+                lv_obj_set_style_local_shadow_color(data->cable_leds[i], LV_LED_PART_MAIN, LV_STATE_DEFAULT,
+                                                    LV_COLOR_RED);
+            }
         }
     }
 }
@@ -199,6 +223,12 @@ static void open_page(model_t *model, void *args) {
     create_cavi(data, model);
     lv_obj_align(cavi, NULL, LV_ALIGN_IN_BOTTOM_MID, 0, 0);
 
+    lbl = lv_label_create(cavi, NULL);
+    lv_obj_set_style_local_text_font(lbl, LV_LABEL_PART_MAIN, LV_STATE_DEFAULT, lv_theme_get_font_subtitle());
+    lv_label_set_text(lbl, "GUASTO");
+    lv_obj_align(lbl, NULL, LV_ALIGN_CENTER, 0, 0);
+    data->lguasto = lbl;
+
     lbl = lv_label_create(lv_scr_act(), NULL);
     lv_obj_set_auto_realign(lbl, 1);
     lv_obj_align(lbl, NULL, LV_ALIGN_IN_BOTTOM_LEFT, 4, 0);
@@ -209,6 +239,16 @@ static void open_page(model_t *model, void *args) {
     lv_obj_align(lbl, NULL, LV_ALIGN_IN_BOTTOM_RIGHT, -4, 0);
     data->lrete = lbl;
 
+    lv_obj_t *sheet = lv_cont_create(lv_scr_act(), NULL);
+    lv_obj_set_size(sheet, LV_HOR_RES, LV_VER_RES);
+    lv_obj_add_style(sheet, LV_CONT_PART_MAIN, &style_transparent_cont);
+    lv_obj_align(sheet, NULL, LV_ALIGN_CENTER, 0, 0);
+    view_common_password_popup(model, sheet, PASSWORD_POPUP_ID);
+
+    data->popup = sheet;
+    lv_obj_set_hidden(data->popup, 1);
+
+    view_register_default_callback(data->popup, OTHER_SHEET_ID);
     view_register_default_callback(settings, CONFIG_BTN_ID);
 }
 
@@ -235,9 +275,17 @@ static view_message_t process_page_event(model_t *model, void *arg, view_event_t
         case VIEW_EVENT_CODE_LVGL:
             if (event.lvgl.lv_event == LV_EVENT_CLICKED) {
                 switch (event.lvgl.data->id) {
+                    case OTHER_SHEET_ID:
+                        lv_obj_set_hidden(data->popup, 1);
+                        break;
+
                     case CONFIG_BTN_ID:
-                        msg.vmsg.code = VIEW_PAGE_COMMAND_CODE_CHANGE_PAGE;
-                        msg.vmsg.page = &page_menu;
+                        if (model_password_enabled(model)) {
+                            lv_obj_set_hidden(data->popup, 0);
+                        } else {
+                            msg.vmsg.code = VIEW_PAGE_COMMAND_CODE_CHANGE_PAGE;
+                            msg.vmsg.page = &page_menu;
+                        }
                         break;
 
                     case CHANNEL_LED_ID:
@@ -249,6 +297,9 @@ static view_message_t process_page_event(model_t *model, void *arg, view_event_t
                     default:
                         break;
                 }
+            } else if (event.lvgl.lv_event == LV_EVENT_APPLY) {
+                msg.vmsg.code = VIEW_PAGE_COMMAND_CODE_CHANGE_PAGE;
+                msg.vmsg.page = &page_menu;
             }
             break;
 

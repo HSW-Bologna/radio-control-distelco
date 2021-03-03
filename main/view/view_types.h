@@ -5,7 +5,8 @@
 
 
 typedef struct {
-    int id, number;
+    int   id, number;
+    void *extra;
 } view_obj_data_t;
 
 
@@ -58,6 +59,7 @@ typedef enum {
     VIEW_CONTROLLER_COMMAND_MANAGEMENT_READ,
     VIEW_CONTROLLER_COMMAND_TEST_RELE,
     VIEW_CONTROLLER_COMMAND_TEST,
+    VIEW_CONTROLLER_COMMAND_REENABLE_TX,
 } view_controller_command_code_t;
 
 
@@ -65,8 +67,9 @@ typedef struct {
     view_controller_command_code_t code;
 
     union {
-        uint8_t data_reg;
-        uint8_t test;
+        uint32_t addr;
+        uint8_t  data_reg;
+        uint8_t  test;
 
         struct {
             size_t rele;

@@ -141,6 +141,8 @@ int channel_is_ok(channel_t *channel) {
             return 0;
         if (channel->masters[i].info.failed_tx)
             return 0;
+        if (channel->masters[i].info.tx_disabled)
+            return 0;
     }
 
     for (size_t i = 0; i < channel->num_minions; i++) {
@@ -151,6 +153,8 @@ int channel_is_ok(channel_t *channel) {
         if (channel->minions[i].info.guasto_antenna)
             return 0;
         if (channel->minions[i].info.failed_tx)
+            return 0;
+        if (channel->minions[i].info.tx_disabled)
             return 0;
     }
 

@@ -52,6 +52,7 @@ typedef struct __attribute__((__packed__)) {
     uint8_t  failed_tx;     // 1 if problem detected during last transmission
     uint8_t  failed_antenna;
     uint8_t  missing_rx;     // 1 if no rx // in last 24h
+    uint8_t  tx_disable;
 } status2_packet_t;
 
 

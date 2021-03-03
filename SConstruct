@@ -62,7 +62,7 @@ PROGRAM = "simulated.exe" if MINGW else "simulated"
 MAIN = "main"
 COMPONENTS = "components"
 LVGL = "{}/lvgl".format(COMPONENTS)
-FREERTOS = 'main/simulator/FreeRTOS/FreeRTOS'
+FREERTOS = 'main/simulator/freertos-simulator'
 CJSON = 'main/simulator/cJSON'
 B64 = 'main/simulator/b64'
 
@@ -84,52 +84,11 @@ LDLIBS = ["-lmingw32", "-lSDL2main",
 SDLPATH = ARGUMENTS.get('sdl', None)
 LIBPATH = [os.path.join(SDLPATH, 'lib')] if SDLPATH else []
 
-FREERTOSPATH = [
-    f'{FREERTOS}/Source/include',
-    f'{FREERTOS}/Source/portable/ThirdParty/GCC/Posix',
-    f'{FREERTOS}/Source/portable/ThirdParty/GCC/Posix/utils',
-    f'{FREERTOS}/Demo/Common/include',
-]
 
 CPPPATH = [
     COMPONENTS, f"{LVGL}/src", f"{LVGL}", f'{MAIN}/simulator/port', f'#{MAIN}',
-    f"#{MAIN}/config", f"{MAIN}/simulator", CJSON, B64
-] + FREERTOSPATH
-
-
-FREERTOSSRC = Glob(f'{FREERTOS}/Source/*.c') + [File(f) for f in [
-    # Memory manager (use malloc() / free() )
-    f'{FREERTOS}/Source/portable/MemMang/heap_3.c',
-    # posix port
-    f'{FREERTOS}/Source/portable/ThirdParty/GCC/Posix/utils/wait_for_event.c',
-    f'{FREERTOS}/Source/portable/ThirdParty/GCC/Posix/port.c',
-    # Demo library.
-    f'{FREERTOS}/Demo/Common/Minimal/AbortDelay.c',
-    f'{FREERTOS}/Demo/Common/Minimal/BlockQ.c',
-    f'{FREERTOS}/Demo/Common/Minimal/blocktim.c',
-    f'{FREERTOS}/Demo/Common/Minimal/countsem.c',
-    f'{FREERTOS}/Demo/Common/Minimal/death.c',
-    f'{FREERTOS}/Demo/Common/Minimal/dynamic.c',
-    f'{FREERTOS}/Demo/Common/Minimal/EventGroupsDemo.c',
-    f'{FREERTOS}/Demo/Common/Minimal/flop.c',
-    f'{FREERTOS}/Demo/Common/Minimal/GenQTest.c',
-    f'{FREERTOS}/Demo/Common/Minimal/integer.c',
-    f'{FREERTOS}/Demo/Common/Minimal/IntSemTest.c',
-    f'{FREERTOS}/Demo/Common/Minimal/MessageBufferAMP.c',
-    f'{FREERTOS}/Demo/Common/Minimal/MessageBufferDemo.c',
-    f'{FREERTOS}/Demo/Common/Minimal/PollQ.c',
-    f'{FREERTOS}/Demo/Common/Minimal/QPeek.c',
-    f'{FREERTOS}/Demo/Common/Minimal/QueueOverwrite.c',
-    f'{FREERTOS}/Demo/Common/Minimal/QueueSet.c',
-    f'{FREERTOS}/Demo/Common/Minimal/QueueSetPolling.c',
-    f'{FREERTOS}/Demo/Common/Minimal/recmutex.c',
-    f'{FREERTOS}/Demo/Common/Minimal/semtest.c',
-    f'{FREERTOS}/Demo/Common/Minimal/StaticAllocation.c',
-    f'{FREERTOS}/Demo/Common/Minimal/StreamBufferDemo.c',
-    f'{FREERTOS}/Demo/Common/Minimal/StreamBufferInterrupt.c',
-    f'{FREERTOS}/Demo/Common/Minimal/TaskNotify.c',
-    f'{FREERTOS}/Demo/Common/Minimal/TimerDemo.c',
-]]
+    f"#{MAIN}/config", f"#{MAIN}/simulator", CJSON, B64
+]
 
 
 def main():
@@ -157,6 +116,11 @@ def main():
                                     exports=['gel_env', 'gel_selected'])
     env['CPPPATH'] += [include]
 
+    freertos_env = env
+    (freertos, include) = SConscript(f'{FREERTOS}/SConscript',
+                                     exports=['freertos_env'])
+    env['CPPPATH'] += [include]
+
     sdkconfig = env.Command(
         "main/simulator/sdkconfig.h",
         [str(filename) for filename in Path(
@@ -176,11 +140,11 @@ def main():
     sources += [
         File(filename) for filename in Path(f'{LVGL}/src').rglob('*.c')
     ]
-    sources += FREERTOSSRC
     sources += [File(f'{CJSON}/cJSON.c')]
-    sources += [File(f'{B64}/encode.c'), File(f'{B64}/decode.c'), File(f'{B64}/buffer.c')]
+    sources += [File(f'{B64}/encode.c'),
+                File(f'{B64}/decode.c'), File(f'{B64}/buffer.c')]
 
-    prog = env.Program(PROGRAM, sources + objects, LIBPATH=LIBPATH)
+    prog = env.Program(PROGRAM, sources + objects + freertos, LIBPATH=LIBPATH)
     PhonyTargets('run', './simulated', prog, env)
     env.Alias('mingw', prog)
 

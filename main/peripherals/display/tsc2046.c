@@ -29,9 +29,11 @@
  *  STATIC VARIABLES
  **********************/
 // static int     touch_x = 0, touch_y = 0, f_touch_detected = 0;
-static int16_t avg_buf_x[XPT2046_AVG];
-static int16_t avg_buf_y[XPT2046_AVG];
-static uint8_t avg_last;
+static int16_t          avg_buf_x[XPT2046_AVG];
+static int16_t          avg_buf_y[XPT2046_AVG];
+static uint8_t          avg_last;
+static xSemaphoreHandle sem         = NULL;
+static int              touch_found = 0;
 
 /**********************
  *   STATIC FUNCTIONS
@@ -120,6 +122,8 @@ spi_device_handle_t tpspi;
  *   GLOBAL FUNCTIONS
  **********************/
 void tsc2046_init() {
+    sem = xSemaphoreCreateMutex();
+
     esp_err_t ret;
 
     spi_device_interface_config_t devcfg = {
@@ -141,6 +145,14 @@ void tsc2046_init() {
                           .pull_down_en = 0,
                           .pull_up_en   = 0};
     gpio_config(&conf);
+}
+
+
+int tsc2046_touch_found(void) {
+    xSemaphoreTake(sem, portMAX_DELAY);
+    int res = touch_found;
+    xSemaphoreGive(sem);
+    return res;
 }
 
 
@@ -181,6 +193,10 @@ bool tsc2046_touch_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
         avg_last = 0;
         valid    = false;
     }
+
+    xSemaphoreTake(sem, portMAX_DELAY);
+    touch_found = valid;
+    xSemaphoreGive(sem);
 
     data->point.x = x;
     data->point.y = y;

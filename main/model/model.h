@@ -29,8 +29,10 @@ typedef struct {
     uint32_t  ip_addr;
     uint8_t   cavi;
     int       connected;
+    uint8_t   password[4];
 
     uint8_t anomalie_cavi;
+    uint8_t errore_scheda_gestione;
     int     to_save;
     int     network_config_changed;
     uint8_t spi_received[14];
@@ -60,7 +62,10 @@ uint8_t  model_cables(model_t *model);
 
 device_info_t model_get_channel_master_info(model_t *model, size_t c, size_t m);
 device_info_t model_get_channel_minion_info(model_t *model, size_t c, size_t m);
-int  model_get_connected(model_t *model);
+int           model_get_connected(model_t *model);
+int           model_get_errore_scheda_gestione(model_t *model);
+int           model_password_enabled(model_t *model);
+void          model_set_password(model_t *model, int pw1, int pw2, int pw3, int pw4);
 
 int  model_add_master_to_channel(model_t *model, size_t i);
 int  model_add_minion_to_channel(model_t *model, size_t i);
@@ -80,5 +85,6 @@ void model_set_cable_anomaly(model_t *model, uint8_t anomaly);
 void model_update_channel(model_t *model, device_update_t update);
 void model_set_spi_received(model_t *model, uint8_t *buffer);
 void model_set_connected(model_t *model, int connected);
+void model_set_errore_scheda_gestione(model_t *model, int errore);
 
 #endif

@@ -15,9 +15,39 @@ void model_init(model_t *model) {
     model->anomalie_cavi          = 0;
     model->network_config_changed = 0;
     model->connected              = 0;
+    model->errore_scheda_gestione = 0;
+
+    model->password[0] = 0;
+    model->password[1] = 0;
+    model->password[2] = 0;
+    model->password[3] = 0;
 
     for (size_t i = 0; i < MAX_CHANNELS; i++)
         channel_init(&model->channels[i]);
+}
+
+
+void model_set_password(model_t *model, int pw1, int pw2, int pw3, int pw4) {
+    model->to_save = 1;
+    model->password[0] = pw1;
+    model->password[1] = pw2;
+    model->password[2] = pw3;
+    model->password[3] = pw4;
+}
+
+
+int model_password_enabled(model_t *model) {
+    return model->password[0] || model->password[1] || model->password[2] || model->password[3];
+}
+
+
+int model_get_errore_scheda_gestione(model_t *model) {
+    return model->errore_scheda_gestione;
+}
+
+
+void model_set_errore_scheda_gestione(model_t *model, int errore) {
+    model->errore_scheda_gestione = errore;
 }
 
 

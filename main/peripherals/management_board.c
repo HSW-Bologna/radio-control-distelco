@@ -19,6 +19,7 @@ struct task_message {
 
 static void management_board_task(void *arg);
 static void build_packet(uint8_t *buffer, uint8_t outputs);
+static void reset(void);
 
 
 static const char *        TAG = "Management";
@@ -29,16 +30,16 @@ static struct {
     uint8_t input;
     uint8_t cables[4];
     uint8_t output;
+    uint8_t error;
 } state;
 static int     newdata = 0;
 static uint8_t received_packet[16];
-
 
 void management_board_init(void) {
     sem   = xSemaphoreCreateMutex();
     queue = xQueueCreate(8, sizeof(struct task_message));
 
-    spi_device_interface_config_t devcfg = {.clock_speed_hz = 2 * 1000 * 1000,
+    spi_device_interface_config_t devcfg = {.clock_speed_hz = 400 * 1000,
                                             .mode           = 0,
                                             .spics_io_num   = SPI_CS3,
                                             .queue_size     = 10,
@@ -49,6 +50,10 @@ void management_board_init(void) {
     esp_err_t ret = spi_bus_add_device(HSPI_HOST, &devcfg, &spi);
     assert(ret == ESP_OK);
 
+    gpio_config_t conf = {.intr_type = GPIO_INTR_DISABLE, .mode = GPIO_MODE_OUTPUT, .pin_bit_mask = BIT64(SPI_CS4)};
+    gpio_config(&conf);
+    gpio_set_level(SPI_CS4, 1);
+
     xTaskCreate(management_board_task, "Management board", 4096, NULL, 3, NULL);
 }
 
@@ -56,6 +61,15 @@ void management_board_init(void) {
 void management_board_set_relay(uint8_t relay, int value) {
     struct task_message message = {.rele = relay, .level = !value};
     xQueueSend(queue, &message, 0);
+}
+
+
+int management_board_error(void) {
+    xSemaphoreTake(sem, portMAX_DELAY);
+    int res = state.error;
+    xSemaphoreGive(sem);
+
+    return res;
 }
 
 
@@ -141,20 +155,32 @@ static int update_state(void) {
         state.cables[1] = receive[6];
         state.cables[2] = receive[7];
         state.cables[3] = receive[8];
+        state.error     = 0;
         xSemaphoreGive(sem);
         return 0;
     } else {
-        // ESP_LOGW(TAG, "Error while polling underlaying management board!");
-        // ESP_LOG_BUFFER_HEX(TAG, receive, 14);
+        state.error = 1;
         xSemaphoreGive(sem);
+        reset();
         return -1;
     }
+}
+
+
+static void reset(void) {
+    gpio_set_level(SPI_CS4, 0);
+    vTaskDelay(pdMS_TO_TICKS(2));
+    gpio_set_level(SPI_CS4, 1);
 }
 
 
 static void management_board_task(void *arg) {
     struct task_message message;
     int                 power_supply_anomaly = -1;
+
+    vTaskDelay(pdMS_TO_TICKS(50));
+
+    reset();
 
     for (;;) {
         if (xQueueReceive(queue, &message, pdMS_TO_TICKS(500)) == pdTRUE) {

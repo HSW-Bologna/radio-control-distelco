@@ -26,10 +26,11 @@ typedef enum {
 
 
 typedef struct {
-    int      guasto_radio;
-    int      guasto_antenna;
-    int      failed_tx;
-    int      connected;
+    uint8_t  guasto_radio;
+    uint8_t  guasto_antenna;
+    uint8_t  failed_tx;
+    uint8_t  tx_disabled;
+    uint8_t  connected;
     char     name[CHANNEL_NAME_LEN];
     uint32_t remotes[MAX_MINIONS_PER_CHANNEL];
 
@@ -60,7 +61,7 @@ typedef struct {
     device_t masters[MAX_MASTERS_PER_CHANNEL];
     device_t minions[MAX_MINIONS_PER_CHANNEL];
 
-    size_t num_masters, num_minions;
+    uint8_t num_masters, num_minions;
 } channel_t;
 
 void channel_init(channel_t *channel);

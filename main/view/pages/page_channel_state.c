@@ -11,6 +11,8 @@
 
 enum {
     BACK_BTN_ID,
+    REENABLE_MASTER_BTN_ID,
+    REENABLE_MINION_BTN_ID,
 };
 
 
@@ -25,6 +27,8 @@ struct page_data {
         lv_obj_t *radio;
         lv_obj_t *antenna;
         lv_obj_t *failed_tx;
+        lv_obj_t *tx_disabled;
+        lv_obj_t *reenable;
         lv_obj_t *remotes[MAX_MINIONS_PER_CHANNEL];
     } masters[MAX_MASTERS_PER_CHANNEL];
 
@@ -33,6 +37,8 @@ struct page_data {
         lv_obj_t *status;
         lv_obj_t *radio;
         lv_obj_t *failed_tx;
+        lv_obj_t *tx_disabled;
+        lv_obj_t *reenable;
         lv_obj_t *remotes[MAX_MINIONS_PER_CHANNEL];
     } minions[MAX_MASTERS_PER_CHANNEL];
 };
@@ -96,6 +102,21 @@ static lv_obj_t *create_master_panel(lv_obj_t *root, model_t *model, struct page
     lv_obj_align(failed_tx, NULL, LV_ALIGN_IN_TOP_LEFT, 160, 104);
     data->masters[index].failed_tx = failed_tx;
 
+    lbl = lv_label_create(cont, NULL);
+    lv_label_set_text(lbl, "Tx disabled:");
+    lv_obj_align(lbl, NULL, LV_ALIGN_IN_TOP_LEFT, 8, 128);
+    lv_obj_t *tx_disabled = lv_led_create(cont, status);
+    lv_obj_align(tx_disabled, NULL, LV_ALIGN_IN_TOP_LEFT, 160, 128);
+    data->masters[index].tx_disabled = tx_disabled;
+
+    lv_obj_t *reenable = lv_btn_create(cont, NULL);
+    lv_obj_set_width(reenable, 80);
+    lbl = lv_label_create(reenable, NULL);
+    lv_label_set_text(lbl, "enable");
+    view_register_default_callback_number(reenable, REENABLE_MASTER_BTN_ID, index);
+    lv_obj_align(reenable, tx_disabled, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
+    data->masters[index].reenable = reenable;
+
     device_info_t info = model_get_channel_master_info(model, data->channel, index);
 
     lv_obj_t *fw = lv_label_create(cont, NULL);
@@ -114,7 +135,7 @@ static lv_obj_t *create_master_panel(lv_obj_t *root, model_t *model, struct page
         lv_obj_t *minions = lv_label_create(cont, NULL);
         lv_obj_set_style_local_text_font(minions, LV_LABEL_PART_MAIN, LV_STATE_DEFAULT, lv_theme_get_font_subtitle());
         lv_label_set_text(minions, "Remoti:");
-        lv_obj_align(minions, NULL, LV_ALIGN_IN_TOP_LEFT, 4, 130);
+        lv_obj_align(minions, NULL, LV_ALIGN_IN_TOP_LEFT, 4, 154);
 
         int counter = 0;
         for (size_t i = 0; i < MAX_MINIONS_PER_CHANNEL; i++) {
@@ -187,6 +208,21 @@ static lv_obj_t *create_minion_panel(lv_obj_t *root, model_t *model, struct page
     lv_obj_align(failed_tx, NULL, LV_ALIGN_IN_TOP_LEFT, 160, 80);
     data->minions[index].failed_tx = failed_tx;
 
+    lbl = lv_label_create(cont, NULL);
+    lv_label_set_text(lbl, "Tx disabled:");
+    lv_obj_align(lbl, NULL, LV_ALIGN_IN_TOP_LEFT, 8, 104);
+    lv_obj_t *tx_disabled = lv_led_create(cont, status);
+    lv_obj_align(tx_disabled, NULL, LV_ALIGN_IN_TOP_LEFT, 160, 104);
+    data->minions[index].tx_disabled = tx_disabled;
+
+    lv_obj_t *reenable = lv_btn_create(cont, NULL);
+    lv_obj_set_width(reenable, 80);
+    lbl = lv_label_create(reenable, NULL);
+    lv_label_set_text(lbl, "enable");
+    view_register_default_callback_number(reenable, REENABLE_MINION_BTN_ID, index);
+    lv_obj_align(reenable, tx_disabled, LV_ALIGN_OUT_RIGHT_MID, 10, 0);
+    data->minions[index].reenable = reenable;
+
     device_info_t info = model_get_channel_minion_info(model, data->channel, index);
 
     int num_masters = 0;
@@ -200,7 +236,7 @@ static lv_obj_t *create_minion_panel(lv_obj_t *root, model_t *model, struct page
         lv_obj_t *minions = lv_label_create(cont, NULL);
         lv_obj_set_style_local_text_font(minions, LV_LABEL_PART_MAIN, LV_STATE_DEFAULT, lv_theme_get_font_subtitle());
         lv_label_set_text(minions, "Remoti:");
-        lv_obj_align(minions, NULL, LV_ALIGN_IN_TOP_LEFT, 4, 110);
+        lv_obj_align(minions, NULL, LV_ALIGN_IN_TOP_LEFT, 4, 134);
 
         int counter = 0;
         for (size_t i = 0; i < MAX_MASTERS_PER_CHANNEL; i++) {
@@ -261,6 +297,14 @@ static void update_devices(model_t *model, struct page_data *data) {
             led_color(data->masters[i].failed_tx, LV_COLOR_GREEN);
         }
 
+        if (info.tx_disabled || !connected) {
+            led_color(data->masters[i].tx_disabled, LV_COLOR_RED);
+            lv_obj_set_hidden(data->masters[i].reenable, !connected);
+        } else {
+            led_color(data->masters[i].tx_disabled, LV_COLOR_GREEN);
+            lv_obj_set_hidden(data->masters[i].reenable, 1);
+        }
+
         if (!connected)
             led_color(data->masters[i].status, LV_COLOR_RED);
         else
@@ -293,6 +337,14 @@ static void update_devices(model_t *model, struct page_data *data) {
             led_color(data->minions[i].failed_tx, LV_COLOR_RED);
         } else {
             led_color(data->minions[i].failed_tx, LV_COLOR_GREEN);
+        }
+
+        if (info.tx_disabled || !connected) {
+            led_color(data->minions[i].tx_disabled, LV_COLOR_RED);
+            lv_obj_set_hidden(data->minions[i].reenable, !connected);
+        } else {
+            led_color(data->minions[i].tx_disabled, LV_COLOR_GREEN);
+            lv_obj_set_hidden(data->minions[i].reenable, 1);
         }
 
         if (!connected)
@@ -372,6 +424,28 @@ static view_message_t process_page_event(model_t *model, void *arg, view_event_t
                     case BACK_BTN_ID:
                         msg.vmsg.code = VIEW_PAGE_COMMAND_CODE_BACK;
                         break;
+
+                    case REENABLE_MASTER_BTN_ID: {
+                        uint32_t ip;
+
+                        if (model_get_channel_master_ip(model, &ip, data->channel, event.lvgl.data->number))
+                            break;
+
+                        msg.cmsg.code = VIEW_CONTROLLER_COMMAND_REENABLE_TX;
+                        msg.cmsg.addr = ip;
+                        break;
+                    }
+
+                    case REENABLE_MINION_BTN_ID: {
+                        uint32_t ip;
+
+                        if (model_get_channel_minion_ip(model, &ip, data->channel, event.lvgl.data->number))
+                            break;
+
+                        msg.cmsg.code = VIEW_CONTROLLER_COMMAND_REENABLE_TX;
+                        msg.cmsg.addr = ip;
+                        break;
+                    }
                 }
             }
             break;

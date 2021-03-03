@@ -772,15 +772,19 @@ static void ddlist_init(void) {
 #endif
 }
 
-static void roller_init(void) {
+static void roller_init(const lv_font_t *font) {
 #if LV_USE_ROLLER != 0
     style_init_reset(&styles->roller_bg);
     lv_style_set_text_line_space(&styles->roller_bg, LV_STATE_DEFAULT, LV_DPX(25));
+    lv_style_set_pad_hor(&styles->roller_bg, LV_STATE_DEFAULT, 8);
+    lv_style_set_text_font(&styles->roller_bg, LV_STATE_DEFAULT, font);
 
     style_init_reset(&styles->roller_sel);
     lv_style_set_bg_opa(&styles->roller_sel, LV_STATE_DEFAULT, LV_OPA_COVER);
     lv_style_set_bg_color(&styles->roller_sel, LV_STATE_DEFAULT, theme.color_primary);
     lv_style_set_text_color(&styles->roller_sel, LV_STATE_DEFAULT, LV_COLOR_WHITE);
+    lv_style_set_pad_hor(&styles->roller_sel, LV_STATE_DEFAULT, 8);
+    lv_style_set_text_font(&styles->roller_sel, LV_STATE_DEFAULT, font);
 #endif
 }
 
@@ -903,7 +907,7 @@ lv_theme_t *theme_init(lv_color_t color_primary, lv_color_t color_secondary, uin
     spinbox_init();
     list_init();
     ddlist_init();
-    roller_init();
+    roller_init(font_subtitle);
     tabview_init();
     tileview_init();
     table_init();

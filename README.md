@@ -4,7 +4,6 @@
  - aggiorna LVGL anziche' usare la tua fork
  - Unifica di piu' master e minion; sono praticamente la stessa cosa
  - Possibili problemi nella thread safety dei dispositivi SPI
- - In pratica il canale e' rappresentato solo dal numero di dispositivi e dal loro indirizzo ip; non salvarlo come blob ma salva singolarmente solo quello che serve
 
 # Note
 

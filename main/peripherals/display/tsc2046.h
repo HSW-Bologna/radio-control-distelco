@@ -30,4 +30,6 @@ bool tsc2046_touch_read(lv_indev_drv_t *drv, lv_indev_data_t *data);
  */
 void tsc2046_init();
 
+int tsc2046_touch_found(void);
+
 #endif

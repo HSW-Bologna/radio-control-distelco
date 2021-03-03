@@ -3,6 +3,7 @@
 #include "driver/gpio.h"
 #include "driver/ledc.h"
 
+#include "config/app_config.h"
 #include "../hardwareprofile.h"
 #include "display.h"
 
@@ -41,7 +42,7 @@ static void display_backlight_init() {
                                           .timer_sel  = LEDC_TIMER_2};
     ledc_channel_config(&ledc_channel);
     ledc_stop(LEDC_LOW_SPEED_MODE, LEDC_CHANNEL_1, 0);
-    display_set_backlight(50);
+    display_set_backlight(BASE_BACKLIGHT);
 }
 
 
@@ -56,13 +57,12 @@ void display_init(void) {
     io_conf.pull_up_en   = 0;
     gpio_config(&io_conf);
 
-    spi_device_interface_config_t devcfg = {.clock_speed_hz = 10 * 1000 * 1000,     // Clock out at 40 MHz
-                                            .mode           = 0,                   // SPI mode 0
-                                            .spics_io_num   = LCD_CS,              // CS pin
+    spi_device_interface_config_t devcfg = {.clock_speed_hz = 10 * 1000 * 1000,
+                                            .mode           = 0,
+                                            .spics_io_num   = LCD_CS,
                                             .queue_size     = 10,
-                                            //.flags          = SPI_DEVICE_HALFDUPLEX,
-                                            .pre_cb  = pre_cb,
-                                            .post_cb = post_cb};
+                                            .pre_cb         = pre_cb,
+                                            .post_cb        = post_cb};
 
     // Attach the LCD to the SPI bus
     ret = spi_bus_add_device(HSPI_HOST, &devcfg, &display_spi);
