@@ -6,7 +6,7 @@
 #include "model/model.h"
 #include "gel/timer/timecheck.h"
 #include "view/view.h"
-#include "network/connections.h"
+#include "connections.h"
 #include "network/api_manager.h"
 #include "peripherals/ethernet.h"
 #include "peripherals/storage.h"

@@ -57,7 +57,7 @@ static void create_canali(struct page_data *data, model_t *model) {
 
             lv_obj_t *name = lv_label_create(cont, NULL);
             lv_label_set_long_mode(name, LV_LABEL_LONG_SROLL_CIRC);
-            lv_obj_set_width(name, 48);
+            lv_obj_set_width(name, 54);
             lv_obj_set_auto_realign(name, 1);
             lv_obj_align(name, led, LV_ALIGN_OUT_BOTTOM_MID, 0, 2);
             data->names[i] = name;

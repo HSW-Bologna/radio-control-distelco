@@ -36,6 +36,20 @@ void app_main(void *arg) {
         controller_manage_gui(&model);
         controller_manage(&model);
 
+        model_set_connected(&model, 1);
+        device_info_t info1 = {.connected    = 1,
+                               .name         = "72.232!",
+                               .remoteStatus = {1, 1, 0, 0},
+                               .remotes      = {IP_ADDR(192, 168, 1, 12), IP_ADDR(192, 168, 1, 13), 0, 0}};
+        model_update_channel(&model, (device_update_t){.channel = 0, .master = 1, .index = 0, .info = info1});
+        device_info_t minion1 = {.connected = 1, .name = "MCH 1"};
+        model_update_channel(&model, (device_update_t){.channel = 0, .master = 0, .index = 0, .info = minion1});
+        device_info_t minion2 = {.connected = 1, .name = "MCH 2"};
+        model_update_channel(&model, (device_update_t){.channel = 0, .master = 0, .index = 1, .info = minion2});
+
+        device_info_t info2 = {.connected = 1, .name = "VVF 41"};
+        model_update_channel(&model, (device_update_t){.channel = 1, .master = 1, .index = 0, .info = info2});
+
         vTaskDelay(pdMS_TO_TICKS(10));
     }
 

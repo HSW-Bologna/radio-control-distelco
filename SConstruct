@@ -134,8 +134,6 @@ def main():
     sources += [File(filename) for filename in Path('main/view').rglob('*.c')]
     sources += [File(filename)
                 for filename in Path('main/controller').rglob('*.c')]
-    sources += [File(filename)
-                for filename in Path('main/network').rglob('*.c')]
     sources += [File(filename) for filename in Path('main/model').rglob('*.c')]
     sources += [
         File(filename) for filename in Path(f'{LVGL}/src').rglob('*.c')
@@ -143,6 +141,7 @@ def main():
     sources += [File(f'{CJSON}/cJSON.c')]
     sources += [File(f'{B64}/encode.c'),
                 File(f'{B64}/decode.c'), File(f'{B64}/buffer.c')]
+
 
     prog = env.Program(PROGRAM, sources + objects + freertos, LIBPATH=LIBPATH)
     PhonyTargets('run', './simulated', prog, env)

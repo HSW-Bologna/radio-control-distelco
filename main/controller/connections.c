@@ -9,7 +9,7 @@
 #include "freertos/event_groups.h"
 #include "esp_log.h"
 
-#include "network/device.h"
+#include "device.h"
 #include "model/model.h"
 
 

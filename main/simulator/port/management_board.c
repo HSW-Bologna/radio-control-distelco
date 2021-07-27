@@ -18,6 +18,10 @@ int management_board_new_data(void) {
     return 0;
 }
 
+int management_board_error(void) {
+    return 0;
+}
+
 uint8_t management_board_power_supply_anomaly(void) {
     return 0;
 }

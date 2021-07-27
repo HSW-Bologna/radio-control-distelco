@@ -44,14 +44,15 @@ void controller_manage_gui(model_t *model) {
         view_process_msg(umsg.vmsg, model);
     }
 
-#if 1
+#if 0
     if (is_expired(refreshts, get_millis(), 1000UL)) {
+        ssd2119_reconfigure();
         lv_obj_invalidate(lv_scr_act());
         refreshts = get_millis();
     }
 #endif
 
-#if 1
+#if 0
     switch (screensaver) {
         case 0:
             if (is_expired(screensaverts, get_millis(), IDLE_DISPLAY_TIMEOUT)) {

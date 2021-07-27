@@ -5,8 +5,7 @@
 #include "freertos/queue.h"
 
 #include "model/model.h"
-#include "network/device.h"
-
+#include "device.h"
 
 
 void connections_restart(model_t *model, QueueHandle_t queue);

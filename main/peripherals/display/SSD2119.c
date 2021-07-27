@@ -41,6 +41,7 @@
 static void ssd2119_command(uint8_t cmd);
 static void ssd2119_data(uint16_t data);
 static void ssd2119_set_window(int x1, int x2, int y1, int y2);
+static void configure(void);
 
 /**********************
  *   GLOBAL FUNCTIONS
@@ -55,67 +56,7 @@ void ssd2119_init(void) {
     display_set_reset(1);
     vTaskDelay(pdMS_TO_TICKS(10));
 
-    ssd2119_command(0x0028);     // VCOM OTP
-    ssd2119_data(0x0006);        // Page 55-56 of SSD2119 datasheet
-
-    ssd2119_command(0x0000);     // start Oscillator
-    ssd2119_data(0x0001);        // Page 36 of SSD2119 datasheet
-
-    ssd2119_command(0x0001);     // Driver Output Control
-    ssd2119_data(0x30EF);        // Page 36-39 of SSD2119 datasheet
-    // Era 72EF
-
-    ssd2119_command(0x0002);     // LCD Driving Waveform Control
-    ssd2119_data(0x0600);        // Page 40-42 of SSD2119 datasheet
-
-    ssd2119_command(0x0003);     // Power Control 1
-    ssd2119_data(0x6A38);        // Page 43-44 of SSD2119 datasheet
-
-    ssd2119_command(0x0010);     // Sleep mode
-    ssd2119_data(0x0000);        // Page 49 of SSD2119 datasheet
-
-    ssd2119_command(0x0011);     // Entry Mode
-    ssd2119_data(0x6430);        // Page 50-52 of SSD2119 datasheet
-
-    ssd2119_command(0x0007);     // Display Control
-    ssd2119_data(0x0033);        // Page 45 of SSD2119 datasheet
-
-    ssd2119_command(0x0025);     // Frame Frequency Control
-    ssd2119_data(0xd000);        // Page 53 of SSD2119 datasheet
-
-    ssd2119_command(0x000B);     // Frame Cycle Control
-    ssd2119_data(0x5308);        // Page 45 of SSD2119 datasheet
-
-    // Gamma Control (R30h to R3Bh) -- Page 56 of SSD2119 datasheet
-    ssd2119_command(0x0030);
-    ssd2119_data(0x0000);
-
-    ssd2119_command(0x0031);
-    ssd2119_data(0x0101);
-
-    ssd2119_command(0x0032);
-    ssd2119_data(0x0100);
-
-    ssd2119_command(0x0033);
-    ssd2119_data(0x0707);
-
-    ssd2119_command(0x0034);
-    ssd2119_data(0x0707);
-
-    ssd2119_command(0x0035);
-    ssd2119_data(0x0305);
-
-    ssd2119_command(0x0036);
-    ssd2119_data(0x0707);
-
-    ssd2119_command(0x0037);
-    ssd2119_data(0x0201);
-
-    ssd2119_command(0x003A);
-    ssd2119_data(0x1200);
-
-    ssd2119_command(0x003B);
-    ssd2119_data(0x0900);
+    configure();
 
     ssd2119_command(0x000C);     // Power Control 2
     ssd2119_data(0x0004);        // Page 47 of SSD2119 datasheet
@@ -202,6 +143,14 @@ void ssd2119_flush(lv_disp_drv_t *disp_drv, const lv_area_t *area, lv_color_t *c
         lv_disp_flush_ready(disp_drv);
 }
 
+
+void ssd2119_reconfigure(void) {
+    system_spi_take();
+    configure();
+    system_spi_give();
+}
+
+
 /**
  * Write a command to the NT7534
  * @param cmd the command
@@ -210,6 +159,7 @@ static void ssd2119_command(uint8_t cmd) {
     // display_set_data_command(SSD2119_CMD_MODE);
     display_send_data_command(&cmd, 1, SSD2119_CMD_MODE);
 }
+
 
 /**
  * Write data to the NT7534
@@ -226,6 +176,7 @@ static void ssd2119_data(uint16_t data) {
     display_send_data_command(buffer, 2, SSD2119_DATA_MODE);
 }
 
+
 static void ssd2119_set_window(int x1, int x2, int y1, int y2) {
     ssd2119_command(0x004E);     // RAM address set
     ssd2119_data(x1);            // Page 58 of SSD2119 datasheet
@@ -238,4 +189,69 @@ static void ssd2119_set_window(int x1, int x2, int y1, int y2) {
     ssd2119_data(x1);               // Page 57 of SSD2119 datasheet
     ssd2119_command(0x0046);        // Horizontal RAM address position
     ssd2119_data(x2);               // Page 57 of SSD2119 datasheet
+}
+
+
+static void configure(void) {
+    ssd2119_command(0x0028);     // VCOM OTP
+    ssd2119_data(0x0006);        // Page 55-56 of SSD2119 datasheet
+
+    ssd2119_command(0x0000);     // start Oscillator
+    ssd2119_data(0x0001);        // Page 36 of SSD2119 datasheet
+
+    ssd2119_command(0x0001);     // Driver Output Control
+    ssd2119_data(0x30EF);        // Page 36-39 of SSD2119 datasheet
+    // Era 72EF
+
+    ssd2119_command(0x0002);     // LCD Driving Waveform Control
+    ssd2119_data(0x0600);        // Page 40-42 of SSD2119 datasheet
+
+    ssd2119_command(0x0003);     // Power Control 1
+    ssd2119_data(0x6A38);        // Page 43-44 of SSD2119 datasheet
+
+    ssd2119_command(0x0010);     // Sleep mode
+    ssd2119_data(0x0000);        // Page 49 of SSD2119 datasheet
+
+    ssd2119_command(0x0011);     // Entry Mode
+    ssd2119_data(0x6430);        // Page 50-52 of SSD2119 datasheet
+
+    ssd2119_command(0x0007);     // Display Control
+    ssd2119_data(0x0033);        // Page 45 of SSD2119 datasheet
+
+    ssd2119_command(0x0025);     // Frame Frequency Control
+    ssd2119_data(0xd000);        // Page 53 of SSD2119 datasheet
+
+    ssd2119_command(0x000B);     // Frame Cycle Control
+    ssd2119_data(0x5308);        // Page 45 of SSD2119 datasheet
+
+    // Gamma Control (R30h to R3Bh) -- Page 56 of SSD2119 datasheet
+    ssd2119_command(0x0030);
+    ssd2119_data(0x0000);
+
+    ssd2119_command(0x0031);
+    ssd2119_data(0x0101);
+
+    ssd2119_command(0x0032);
+    ssd2119_data(0x0100);
+
+    ssd2119_command(0x0033);
+    ssd2119_data(0x0707);
+
+    ssd2119_command(0x0034);
+    ssd2119_data(0x0707);
+
+    ssd2119_command(0x0035);
+    ssd2119_data(0x0305);
+
+    ssd2119_command(0x0036);
+    ssd2119_data(0x0707);
+
+    ssd2119_command(0x0037);
+    ssd2119_data(0x0201);
+
+    ssd2119_command(0x003A);
+    ssd2119_data(0x1200);
+
+    ssd2119_command(0x003B);
+    ssd2119_data(0x0900);
 }
