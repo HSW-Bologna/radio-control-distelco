@@ -4,10 +4,9 @@
 #define LED_RUN GPIO_NUM_32
 
 #define TOUCH_CS      GPIO_NUM_17
-#define TOUCH_PEN_IRQ GPIO_NUM_35
+#define TOUCH_PEN_IRQ GPIO_NUM_39
 
-#define DIP_1 GPIO_NUM_39
-#define DIP_2 GPIO_NUM_36
+#define DIP_1 GPIO_NUM_36
 
 #define LCD_RETRO        GPIO_NUM_4
 #define LCD_RESET        GPIO_NUM_15
