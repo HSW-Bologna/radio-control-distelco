@@ -13,4 +13,6 @@
 
 #define BASE_BACKLIGHT 50
 
+#define MODBUS_SERVER_PORT 502
+
 #endif

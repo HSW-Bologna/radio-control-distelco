@@ -6,10 +6,15 @@
 #include "driver/gpio.h"
 #include "driver/spi_master.h"
 #include "esp_log.h"
-
+#include "spi_devices/io/MCP23x17/mcp23x17.h"
+#include "spi_ports/esp-idf/esp_idf_spi_port.h"
 #include "hardwareprofile.h"
 #include "management_board.h"
 #include "system.h"
+
+
+#define LINEA_ANOMALIA_ALIMENTAZIONE MCP23X17_GPIO_9
+
 
 struct task_message {
     size_t rele;
@@ -19,47 +24,85 @@ struct task_message {
 
 static void management_board_task(void *arg);
 static void build_packet(uint8_t *buffer, uint8_t outputs);
-static void reset(void);
+static int  cs_control(int level);
 
 
-static const char *        TAG = "Management";
-static spi_device_handle_t spi;
-static SemaphoreHandle_t   sem   = NULL;
-static QueueHandle_t       queue = NULL;
+static const char       *TAG = "Management";
+spi_device_handle_t      spi;
+static SemaphoreHandle_t sem    = NULL;
+static QueueHandle_t     queue  = NULL;
+static spi_driver_t      driver = {
+         .spi_cs_control = cs_control,
+         .spi_exchange   = esp_idf_spi_port_exchange,
+         .user_data      = NULL,
+};
+
 static struct {
     uint8_t input;
     uint8_t cables[4];
-    uint8_t output;
     uint8_t error;
 } state;
-static int     newdata = 0;
-static uint8_t received_packet[16];
+static int newdata = 0;
+
+
+static int cs_control(int level) {
+    vTaskDelay(2);
+    gpio_set_level(SPI_CS3, level);
+    vTaskDelay(2);
+    return 0;
+}
+
 
 void management_board_init(void) {
     sem   = xSemaphoreCreateMutex();
     queue = xQueueCreate(8, sizeof(struct task_message));
 
-    spi_device_interface_config_t devcfg = {.clock_speed_hz = 400 * 1000,
-                                            .mode           = 0,
-                                            .spics_io_num   = SPI_CS3,
-                                            .queue_size     = 10,
-                                            .pre_cb         = NULL,
-                                            .post_cb        = NULL};
+    spi_device_interface_config_t devcfg = {
+        .clock_speed_hz = 500 * 1000,
+        .mode           = 0,
+        .spics_io_num   = -1,
+        .queue_size     = 10,
+        .pre_cb         = NULL,
+        .post_cb        = NULL,
+    };
 
     // Attach the LCD to the SPI bus
-    esp_err_t ret = spi_bus_add_device(HSPI_HOST, &devcfg, &spi);
-    assert(ret == ESP_OK);
+    ESP_ERROR_CHECK(spi_bus_add_device(HSPI_HOST, &devcfg, &spi));
+    driver.user_data = spi;
 
-    gpio_config_t conf = {.intr_type = GPIO_INTR_DISABLE, .mode = GPIO_MODE_OUTPUT, .pin_bit_mask = BIT64(SPI_CS4)};
+    gpio_config_t conf = {
+        .intr_type = GPIO_INTR_DISABLE, .mode = GPIO_MODE_OUTPUT, .pin_bit_mask = BIT64(SPI_CS4) | BIT64(SPI_CS3)};
     gpio_config(&conf);
+    gpio_set_level(SPI_CS3, 1);
     gpio_set_level(SPI_CS4, 1);
 
-    xTaskCreate(management_board_task, "Management board", 4096, NULL, 3, NULL);
+    system_spi_take();
+    mcp23x17_set_iocon_register(driver, MCP23X17_DEFAULT_ADDR, 0);
+    mcp23x17_set_gpio_direction(driver, MCP23X17_DEFAULT_ADDR, MCP23X17_GPIO_9, MCP23X17_OUTPUT_MODE);
+    mcp23x17_set_gpio_direction(driver, MCP23X17_DEFAULT_ADDR, MCP23X17_GPIO_10, MCP23X17_OUTPUT_MODE);
+    mcp23x17_set_gpio_direction(driver, MCP23X17_DEFAULT_ADDR, MCP23X17_GPIO_11, MCP23X17_OUTPUT_MODE);
+    mcp23x17_set_gpio_direction(driver, MCP23X17_DEFAULT_ADDR, MCP23X17_GPIO_12, MCP23X17_OUTPUT_MODE);
+    mcp23x17_set_gpio_direction(driver, MCP23X17_DEFAULT_ADDR, MCP23X17_GPIO_1, MCP23X17_INPUT_MODE);
+    mcp23x17_set_gpio_direction(driver, MCP23X17_DEFAULT_ADDR, MCP23X17_GPIO_2, MCP23X17_INPUT_MODE);
+
+    mcp23x17_set_gpio_level(driver, MCP23X17_DEFAULT_ADDR, MCP23X17_GPIO_9, 0);
+    mcp23x17_set_gpio_level(driver, MCP23X17_DEFAULT_ADDR, MCP23X17_GPIO_10, 0);
+    mcp23x17_set_gpio_level(driver, MCP23X17_DEFAULT_ADDR, MCP23X17_GPIO_11, 0);
+    mcp23x17_set_gpio_level(driver, MCP23X17_DEFAULT_ADDR, MCP23X17_GPIO_12, 0);
+    system_spi_give();
+
+    xTaskCreate(management_board_task, TAG, 4096, NULL, 3, NULL);
 }
 
 
 void management_board_set_relay(uint8_t relay, int value) {
-    struct task_message message = {.rele = relay, .level = !value};
+    struct task_message message = {.level = !value};
+    switch (relay) {
+        case MANAGEMENT_BOARD_RELAY_1: message.rele = MCP23X17_GPIO_9; break;
+        case MANAGEMENT_BOARD_RELAY_2: message.rele = MCP23X17_GPIO_10; break;
+        case MANAGEMENT_BOARD_RELAY_3: message.rele = MCP23X17_GPIO_11; break;
+        case MANAGEMENT_BOARD_RELAY_4: message.rele = MCP23X17_GPIO_12; break;
+    }
     xQueueSend(queue, &message, 0);
 }
 
@@ -90,14 +133,6 @@ uint8_t management_board_power_supply_anomaly(void) {
 }
 
 
-void management_board_read_response(uint8_t *response) {
-    xSemaphoreTake(sem, portMAX_DELAY);
-    memcpy(response, received_packet, 14);
-    newdata = 0;
-    xSemaphoreGive(sem);
-}
-
-
 int management_board_new_data(void) {
     xSemaphoreTake(sem, portMAX_DELAY);
     int res = newdata;
@@ -106,71 +141,21 @@ int management_board_new_data(void) {
 }
 
 
-static void build_packet(uint8_t *buffer, uint8_t outputs) {
-    memset(buffer, 0x55, 4);
-    buffer[4] = outputs;
-    memset(&buffer[5], 0xAA, 14 - 5);
-}
-
-
-static int validate_packet(uint8_t *buffer) {
-    if (buffer[0] != 0x55)
-        return 0;
-    if (buffer[1] != 0x55)
-        return 0;
-    if (buffer[2] != 0x55)
-        return 0;
-    if (buffer[3] != 0x55)
-        return 0;
-    if (buffer[13] != 0xAA)
-        return 0;
-    return 1;
-}
-
-
 static int update_state(void) {
-    uint8_t buffer[16];
-    uint8_t receive[16];
-    xSemaphoreTake(sem, portMAX_DELAY);
-    build_packet(buffer, state.output);
-    xSemaphoreGive(sem);
-
-    esp_err_t         ret;
-    spi_transaction_t t = {.length    = 14 * 8,     // transaction length is in bits
-                           .tx_buffer = buffer,
-                           .rx_buffer = receive};
-
     system_spi_take();
-    ret = spi_device_polling_transmit(spi, &t);     // Transmit!
-    ESP_ERROR_CHECK(ret);
+
+    state.cables[0]   = 0;
+    state.cables[1]   = 0;
+    state.cables[2]   = 0;
+    state.cables[3]   = 0;
+    int power_anomaly = 1;
+    mcp23x17_get_gpio_level(driver, MCP23X17_DEFAULT_ADDR, MCP23X17_GPIO_1, &power_anomaly);
+    int battery = 1;
+    mcp23x17_get_gpio_level(driver, MCP23X17_DEFAULT_ADDR, MCP23X17_GPIO_2, &battery);
+    state.input = (power_anomaly > 0) | ((battery > 0) << 1);
+    state.error = 0;
     system_spi_give();
-
-    xSemaphoreTake(sem, portMAX_DELAY);
-    memcpy(received_packet, receive, 14);
-    newdata = 1;
-
-    if (validate_packet(receive)) {
-        state.input     = receive[4];
-        state.cables[0] = receive[5];
-        state.cables[1] = receive[6];
-        state.cables[2] = receive[7];
-        state.cables[3] = receive[8];
-        state.error     = 0;
-        xSemaphoreGive(sem);
-        return 0;
-    } else {
-        state.error = 1;
-        xSemaphoreGive(sem);
-        reset();
-        return -1;
-    }
-}
-
-
-static void reset(void) {
-    gpio_set_level(SPI_CS4, 0);
-    vTaskDelay(pdMS_TO_TICKS(2));
-    gpio_set_level(SPI_CS4, 1);
+    return 0;
 }
 
 
@@ -178,35 +163,21 @@ static void management_board_task(void *arg) {
     struct task_message message;
     int                 power_supply_anomaly = -1;
 
-    vTaskDelay(pdMS_TO_TICKS(50));
 
-    reset();
 
     for (;;) {
         if (xQueueReceive(queue, &message, pdMS_TO_TICKS(500)) == pdTRUE) {
-            xSemaphoreTake(sem, portMAX_DELAY);
-            if (message.level)
-                state.output |= 1 << message.rele;
-            else
-                state.output &= ~(1 << message.rele);
-            xSemaphoreGive(sem);
+            system_spi_take();
+            mcp23x17_set_gpio_level(driver, MCP23X17_DEFAULT_ADDR, message.rele, message.level);
+            system_spi_give();
         }
 
-        if (update_state() == 0) {
-            uint8_t anomaly = management_board_power_supply_anomaly();
-            if (anomaly != power_supply_anomaly) {
-                ESP_LOGI(TAG, "Anomalia sull'alimentazione");
-
-                xSemaphoreTake(sem, portMAX_DELAY);
-                if (anomaly)
-                    state.output &= ~(1 << MANAGEMENT_BOARD_RELAY_POWER_SUPPLY_ANOMALY);
-                else
-                    state.output |= 1 << MANAGEMENT_BOARD_RELAY_POWER_SUPPLY_ANOMALY;
-                xSemaphoreGive(sem);
-
-                power_supply_anomaly = anomaly;
-                update_state();
-            }
+        update_state();
+        uint8_t anomaly = management_board_power_supply_anomaly();
+        if (anomaly != power_supply_anomaly) {
+            ESP_LOGI(TAG, "Anomalia sull'alimentazione");
+            mcp23x17_set_gpio_level(driver, MCP23X17_DEFAULT_ADDR, LINEA_ANOMALIA_ALIMENTAZIONE, !anomaly);
+            power_supply_anomaly = anomaly;
         }
     }
 

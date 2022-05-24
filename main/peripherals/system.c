@@ -36,7 +36,7 @@ void system_spi_init(void) {
 
 void system_spi_take(void) {
     xSemaphoreTake(sem, portMAX_DELAY);
-    // vTaskDelay(pdMS_TO_TICKS(20));
+    //vTaskDelay(pdMS_TO_TICKS(20));
 }
 
 

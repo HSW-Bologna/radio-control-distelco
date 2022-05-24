@@ -31,11 +31,11 @@ typedef struct {
     int       connected;
     uint8_t   password[4];
 
+    uint8_t power_bits;
     uint8_t anomalie_cavi;
     uint8_t errore_scheda_gestione;
     int     to_save;
     int     network_config_changed;
-    uint8_t spi_received[14];
 } model_t;
 
 void model_init(model_t *model);
@@ -83,7 +83,6 @@ void model_reset_channel_state(model_t *model, size_t c);
 void model_set_cable(model_t *model, size_t cable, int enabled);
 void model_set_cable_anomaly(model_t *model, uint8_t anomaly);
 void model_update_channel(model_t *model, device_update_t update);
-void model_set_spi_received(model_t *model, uint8_t *buffer);
 void model_set_connected(model_t *model, int connected);
 void model_set_errore_scheda_gestione(model_t *model, int errore);
 

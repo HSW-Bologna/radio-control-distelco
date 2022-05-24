@@ -3,7 +3,9 @@
 #define SDKCONFIG_H_INCLUDED
 // Automatically generated file. Do not edit.
 
-    #define CONFIG_GEL_PAGE_MANAGER 1
+    #define CONFIG_SPI_DEVICES_MCP23X17 1
+#define CONFIG_SPI_ESP_IDF_PORT 1
+#define CONFIG_GEL_PAGE_MANAGER 1
 #define CONFIG_GEL_CONF_INCLUDE_PATH "main/config main"
 #define CONFIG_LV_CONF_SKIP 1
 #define CONFIG_LV_HOR_RES_MAX 320

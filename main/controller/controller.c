@@ -12,21 +12,24 @@
 #include "peripherals/storage.h"
 #include "peripherals/management_board.h"
 #include "utils/utils.h"
+#include "modbus_server.h"
 
 
 static void restart_connections(void);
 
 
-static const char *  TAG     = "Controller";
-static QueueHandle_t queue   = NULL;
-static QueueHandle_t deviceq = NULL;
-static int           test    = 0;
+static const char   *TAG               = "Controller";
+static QueueHandle_t queue             = NULL;
+static QueueHandle_t deviceq           = NULL;
+static int           test              = 0;
+static int           update_after_test = 0;
 
 
 void controller_init(model_t *model) {
     queue   = xQueueCreate(1, sizeof(uint8_t));
     deviceq = xQueueCreate(MAX_CHANNELS * (MAX_MASTERS_PER_CHANNEL + MAX_MINIONS_PER_CHANNEL), sizeof(device_update_t));
 
+    modbus_server_init();
     connections_init();
     storage_init();
     configuration_load(model);
@@ -39,9 +42,7 @@ void controller_init(model_t *model) {
 
 void controller_process_msg(view_controller_command_t msg, model_t *model) {
     switch (msg.code) {
-        case VIEW_CONTROLLER_COMMAND_REENABLE_TX:
-            api_manager_enable_async(msg.addr);
-            break;
+        case VIEW_CONTROLLER_COMMAND_REENABLE_TX: api_manager_enable_async(msg.addr); break;
 
         case VIEW_CONTROLLER_COMMAND_CODE_SAVE_CONFIG:
             if (model_is_to_save(model)) {
@@ -52,8 +53,9 @@ void controller_process_msg(view_controller_command_t msg, model_t *model) {
             if (model_is_network_config_changed(model)) {
                 ESP_LOGI(TAG, "Reset della configurazione di rete");
                 ethernet_set_ip(model_get_my_ip(model));
-                if (ethernet_is_connected(0))
+                if (ethernet_is_connected(0)) {
                     connections_restart(model, deviceq);
+                }
                 model_network_config_clear(model);
             }
             break;
@@ -65,15 +67,14 @@ void controller_process_msg(view_controller_command_t msg, model_t *model) {
                 management_board_set_relay(MANAGEMENT_BOARD_RELAY_2, 0);
                 management_board_set_relay(MANAGEMENT_BOARD_RELAY_3, 0);
                 management_board_set_relay(MANAGEMENT_BOARD_RELAY_4, 0);
+            } else {
+                update_after_test = 1;
             }
             break;
 
-        case VIEW_CONTROLLER_COMMAND_TEST_RELE:
-            management_board_set_relay(msg.rele, msg.level);
-            break;
+        case VIEW_CONTROLLER_COMMAND_TEST_RELE: management_board_set_relay(msg.rele, msg.level); break;
 
-        default:
-            break;
+        default: break;
     }
 }
 
@@ -81,12 +82,12 @@ void controller_process_msg(view_controller_command_t msg, model_t *model) {
 void controller_manage(model_t *model) {
     static unsigned long timestamp = 0;
 
-    static uint8_t cable_anomaly        = 0xFF;
-    static uint8_t power_supply_anomaly = 0xFF;
-    static uint8_t cables               = -1;
+    static uint8_t cable_anomaly = 0xFF;
+    static uint8_t cables        = -1;
 
     if (is_expired(timestamp, get_millis(), 500)) {
         model_set_connected(model, ethernet_is_connected(0));
+        modbus_server_update(model);
         timestamp = get_millis();
     }
 
@@ -104,7 +105,7 @@ void controller_manage(model_t *model) {
     }
 
     uint8_t anomaly = management_board_cable_anomaly(model_cables(model));
-    if (anomaly != cable_anomaly || cables != model_cables(model)) {
+    if (anomaly != cable_anomaly || cables != model_cables(model) || update_after_test) {
         model_set_cable_anomaly(model, anomaly);
         if (!test) {
             management_board_set_relay(MANAGEMENT_BOARD_RELAY_CABLE_ANOMALY, anomaly);
@@ -115,11 +116,12 @@ void controller_manage(model_t *model) {
     }
 
     anomaly = management_board_power_supply_anomaly();
-    if (anomaly != power_supply_anomaly) {
+    if (anomaly != model->power_bits) {
+        model->power_bits = anomaly;
         view_event((view_event_t){.code = VIEW_EVENT_CODE_POWER_STATE, .power_bits = anomaly});
     }
 
-    if (update) {
+    if (update || update_after_test) {
         int guasto_antenna = 0;
         int guasto_radio   = 0;
 
@@ -141,13 +143,13 @@ void controller_manage(model_t *model) {
 
 
     if (management_board_new_data()) {
-        uint8_t buffer[14] = {0};
-        management_board_read_response(buffer);
-        model_set_spi_received(model, buffer);
         model_set_errore_scheda_gestione(model, management_board_error());
-        if (!update)
+        if (!update) {
             view_event((view_event_t){.code = VIEW_EVENT_CODE_MODEL_UPDATE});
+        }
     }
+
+    update_after_test = 0;
 }
 
 

@@ -48,6 +48,7 @@ void connections_clear(void) {
 
 void connections_restart(model_t *model, QueueHandle_t queue) {
     connections_clear();
+    ESP_LOGI(TAG, "Restarting connections");
 
     for (size_t c = 0; c < MAX_CHANNELS; c++) {
         if (!model_is_channel_configured(model, c))

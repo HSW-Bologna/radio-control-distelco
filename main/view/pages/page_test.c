@@ -92,17 +92,14 @@ static view_message_t process_page_event(model_t *model, void *arg, view_event_t
 
     switch (event.code) {
         case VIEW_EVENT_CODE_MODEL_UPDATE:
-            memcpy(data->registers, model->spi_received, 14);
-            msg.vmsg.code = VIEW_PAGE_COMMAND_CODE_UPDATE;
-            break;
+        case VIEW_EVENT_CODE_POWER_STATE: msg.vmsg.code = VIEW_PAGE_COMMAND_CODE_UPDATE; break;
 
         case VIEW_EVENT_CODE_OPEN:
             msg.cmsg.code = VIEW_CONTROLLER_COMMAND_TEST;
             msg.cmsg.test = 1;
             break;
 
-        case VIEW_EVENT_CODE_CUSTOM:
-            break;
+        case VIEW_EVENT_CODE_CUSTOM: break;
 
         case VIEW_EVENT_CODE_LVGL:
             if (event.lvgl.lv_event == LV_EVENT_CLICKED) {
@@ -126,8 +123,7 @@ static view_message_t process_page_event(model_t *model, void *arg, view_event_t
             }
             break;
 
-        default:
-            break;
+        default: break;
     }
 
     return msg;
@@ -137,11 +133,7 @@ static view_message_t process_page_event(model_t *model, void *arg, view_event_t
 static void update_page(model_t *model, void *arg) {
     struct page_data *data = arg;
 
-    lv_label_set_text_fmt(data->label, "%02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X %02X",
-                          data->registers[0], data->registers[1], data->registers[2], data->registers[3],
-                          data->registers[4], data->registers[5], data->registers[6], data->registers[7],
-                          data->registers[8], data->registers[9], data->registers[10], data->registers[11],
-                          data->registers[12], data->registers[13]);
+    lv_label_set_text_fmt(data->label, "0x%02X", model->power_bits);
 }
 
 

@@ -13,3 +13,9 @@
 [submodule "main/simulator/freertos-simulator"]
 	path = main/simulator/freertos-simulator
 	url = https://github.com/Maldus512/freertos-simulator.git
+[submodule "components/SPI"]
+	path = components/SPI
+	url = https://github.com/Maldus512/SPI.git
+[submodule "components/liblightmodbus-esp"]
+	path = components/liblightmodbus-esp
+	url = https://github.com/Jacajack/liblightmodbus-esp.git

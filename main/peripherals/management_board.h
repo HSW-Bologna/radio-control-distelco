@@ -20,7 +20,6 @@ void    management_board_init(void);
 void    management_board_set_relay(uint8_t relay, int value);
 uint8_t management_board_power_supply_anomaly(void);
 uint8_t management_board_cable_anomaly(uint8_t cables);
-void    management_board_read_response(uint8_t *response);
 int     management_board_new_data(void);
 int     management_board_error(void);
 

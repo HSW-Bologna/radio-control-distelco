@@ -90,5 +90,6 @@ void channel_set_device_connected(channel_t *channel, device_type_t t, size_t m,
 
 device_info_t channel_get_device_info(channel_t *channel, device_type_t t, size_t m);
 void          channel_set_device_info(channel_t *channel, device_type_t t, size_t m, device_info_t info);
+int           channel_device_info_ok(device_info_t *info);
 
 #endif

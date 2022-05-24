@@ -131,6 +131,11 @@ void channel_set_minion_guasto_radio(channel_t *channel, size_t m, int guasto) {
 }
 
 
+int channel_device_info_ok(device_info_t *info) {
+    return info->connected && !info->failed_tx && !info->guasto_radio && !info->tx_disabled;
+}
+
+
 int channel_is_ok(channel_t *channel) {
     for (size_t i = 0; i < channel->num_masters; i++) {
         if (!channel->masters[i].info.connected)
@@ -257,9 +262,7 @@ void channel_device_guasti(channel_t *channel, device_type_t t, size_t m, int *r
             *antenna = channel->minions[m].info.guasto_antenna;
             break;
 
-        default:
-            assert(0);
-            break;
+        default: assert(0); break;
     }
 }
 
@@ -281,17 +284,11 @@ void channel_set_device_info(channel_t *channel, device_type_t t, size_t m, devi
 
 static device_t *get_device(channel_t *channel, device_type_t t, size_t m) {
     switch (t) {
-        case DEVICE_TYPE_MASTER:
-            assert(m < MAX_MASTERS_PER_CHANNEL);
-            return &channel->masters[m];
+        case DEVICE_TYPE_MASTER: assert(m < MAX_MASTERS_PER_CHANNEL); return &channel->masters[m];
 
-        case DEVICE_TYPE_MINION:
-            assert(m < MAX_MINIONS_PER_CHANNEL);
-            return &channel->minions[m];
+        case DEVICE_TYPE_MINION: assert(m < MAX_MINIONS_PER_CHANNEL); return &channel->minions[m];
 
-        default:
-            assert(0);
-            break;
+        default: assert(0); break;
     }
 
     return NULL;

@@ -31,12 +31,13 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
 static void got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data);
 
 
-static const char *       TAG = "ethernet";
+static const char        *TAG = "ethernet";
 static EventGroupHandle_t group;
 static SemaphoreHandle_t  sem;
 static void (*connected_cb)(void)    = NULL;
 static void (*disconnected_cb)(void) = NULL;
-static uint32_t current_ip           = 0;
+static uint32_t         current_ip   = 0;
+static esp_eth_handle_t eth_handle   = NULL;
 
 
 void ethernet_init(uint32_t ip) {
@@ -48,8 +49,7 @@ void ethernet_init(uint32_t ip) {
 
     tcpip_adapter_init();
     ESP_LOGI(TAG, "adapter initialized");
-    ret = tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_ETH);     // ret=0x5000 -> tcpip_adapter_invalid_params, very old
-                                                              // esp-idf didn't implementated this yet.
+    ret = tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_ETH);
     ESP_LOGI(TAG, "dhcp client stop RESULT: %d", ret);
     // ethernet_set_ip(ip);
 
@@ -80,11 +80,11 @@ void ethernet_init(uint32_t ip) {
     gpio_install_isr_service(0);
     spi_device_handle_t spi_handle = NULL;
     spi_bus_config_t    buscfg     = {
-        .miso_io_num   = CONFIG_EXAMPLE_DM9051_MISO_GPIO,
-        .mosi_io_num   = CONFIG_EXAMPLE_DM9051_MOSI_GPIO,
-        .sclk_io_num   = CONFIG_EXAMPLE_DM9051_SCLK_GPIO,
-        .quadwp_io_num = -1,
-        .quadhd_io_num = -1,
+               .miso_io_num   = CONFIG_EXAMPLE_DM9051_MISO_GPIO,
+               .mosi_io_num   = CONFIG_EXAMPLE_DM9051_MOSI_GPIO,
+               .sclk_io_num   = CONFIG_EXAMPLE_DM9051_SCLK_GPIO,
+               .quadwp_io_num = -1,
+               .quadhd_io_num = -1,
     };
     ESP_ERROR_CHECK(spi_bus_initialize(CONFIG_EXAMPLE_DM9051_SPI_HOST, &buscfg, 1));
     spi_device_interface_config_t devcfg = {.command_bits   = 1,
@@ -100,8 +100,7 @@ void ethernet_init(uint32_t ip) {
     esp_eth_mac_t *mac                = esp_eth_mac_new_dm9051(&dm9051_config, &mac_config);
     esp_eth_phy_t *phy                = esp_eth_phy_new_dm9051(&phy_config);
 #endif
-    esp_eth_config_t config     = ETH_DEFAULT_CONFIG(mac, phy);
-    esp_eth_handle_t eth_handle = NULL;
+    esp_eth_config_t config = ETH_DEFAULT_CONFIG(mac, phy);
     ESP_LOGI(TAG, "about to install");
     ESP_ERROR_CHECK(esp_eth_driver_install(&config, &eth_handle));
     ESP_LOGI(TAG, "Eth driver installed");
@@ -117,6 +116,11 @@ void ethernet_set_ip(uint32_t ip) {
         return;
     }
 
+    ESP_ERROR_CHECK(esp_eth_stop(eth_handle));
+
+    esp_err_t ret = tcpip_adapter_dhcpc_stop(TCPIP_ADAPTER_IF_ETH);
+    ESP_LOGI(TAG, "dhcp client stop RESULT: %d", ret);
+
     ip4_addr_t printip;
     printip.addr = ip;
     ESP_LOGI(TAG, "Changing ip addr to:" IPSTR, IP2STR(&printip));
@@ -129,6 +133,7 @@ void ethernet_set_ip(uint32_t ip) {
     inet_pton(AF_INET, "255.255.255.0", &ipInfo.netmask);
 
     ESP_ERROR_CHECK(tcpip_adapter_set_ip_info(TCPIP_ADAPTER_IF_ETH, &ipInfo));
+    ESP_ERROR_CHECK(esp_eth_start(eth_handle));
 }
 
 
@@ -153,14 +158,9 @@ static void eth_event_handler(void *arg, esp_event_base_t event_base, int32_t ev
                 disconnected_cb();
             xSemaphoreGive(sem);
             break;
-        case ETHERNET_EVENT_START:
-            ESP_LOGI(TAG, "Ethernet Started");
-            break;
-        case ETHERNET_EVENT_STOP:
-            ESP_LOGI(TAG, "Ethernet Stopped");
-            break;
-        default:
-            break;
+        case ETHERNET_EVENT_START: ESP_LOGI(TAG, "Ethernet Started"); break;
+        case ETHERNET_EVENT_STOP: ESP_LOGI(TAG, "Ethernet Stopped"); break;
+        default: ESP_LOGI(TAG, "Unknown ehternet event %i", event_id); break;
     }
 }
 
@@ -189,7 +189,7 @@ void ethernet_set_callbacks(void (*discb)(void), void (*conncb)(void)) {
 
 /** Event handler for IP_EVENT_ETH_GOT_IP */
 static void got_ip_event_handler(void *arg, esp_event_base_t event_base, int32_t event_id, void *event_data) {
-    ip_event_got_ip_t *            event   = (ip_event_got_ip_t *)event_data;
+    ip_event_got_ip_t             *event   = (ip_event_got_ip_t *)event_data;
     const tcpip_adapter_ip_info_t *ip_info = &event->ip_info;
 
     ESP_LOGI(TAG, "Ethernet Got IP Address");

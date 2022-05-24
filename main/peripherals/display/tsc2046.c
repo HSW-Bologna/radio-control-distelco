@@ -184,6 +184,7 @@ bool tsc2046_touch_read(lv_indev_drv_t *drv, lv_indev_data_t *data) {
         } else {
             tsc2046_corr(&x, &y);
             tsc2046_avg(&x, &y);
+            //printf("%i %i\n", x, y);
             last_x = x;
             last_y = y;
         }

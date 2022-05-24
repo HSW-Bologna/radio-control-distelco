@@ -37,9 +37,8 @@ void app_main() {
     ssd2119_init();
     tsc2046_init();
 
-    ethernet_init(model_get_my_ip(&model));
-
     model_init(&model);
+    ethernet_init(model_get_my_ip(&model));
     view_init(&model, ssd2119_flush, tsc2046_touch_read);
     controller_init(&model);
 

@@ -16,6 +16,7 @@ void model_init(model_t *model) {
     model->network_config_changed = 0;
     model->connected              = 0;
     model->errore_scheda_gestione = 0;
+    model->power_bits             = 0;
 
     model->password[0] = 0;
     model->password[1] = 0;
@@ -28,7 +29,7 @@ void model_init(model_t *model) {
 
 
 void model_set_password(model_t *model, int pw1, int pw2, int pw3, int pw4) {
-    model->to_save = 1;
+    model->to_save     = 1;
     model->password[0] = pw1;
     model->password[1] = pw2;
     model->password[2] = pw3;
@@ -328,11 +329,6 @@ char *model_get_channel_minion_name(model_t *model, size_t channel, size_t m) {
 char *model_get_channel_master_name(model_t *model, size_t channel, size_t m) {
     assert(channel < MAX_CHANNELS);
     return channel_get_master_name(&model->channels[channel], m);
-}
-
-
-void model_set_spi_received(model_t *model, uint8_t *buffer) {
-    memcpy(model->spi_received, buffer, 14);
 }
 
 

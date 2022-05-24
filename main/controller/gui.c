@@ -44,8 +44,8 @@ void controller_manage_gui(model_t *model) {
         view_process_msg(umsg.vmsg, model);
     }
 
-#if 0
-    if (is_expired(refreshts, get_millis(), 1000UL)) {
+#if 1
+    if (is_expired(refreshts, get_millis(), 10000UL)) {
         ssd2119_reconfigure();
         lv_obj_invalidate(lv_scr_act());
         refreshts = get_millis();
